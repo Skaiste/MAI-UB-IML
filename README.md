@@ -29,6 +29,9 @@
  - [ ] Write a Python function for classifying, using an SVM algorithm.
  - [ ] Modify the kNN algorithm so that it includes a pre-processing for reducing the training set.
 
+
+**Note** - in 'Work2' directory we should have everything we will submit or is required to run the scripts
+
 ### Untidy notes from session 2 Labs:
 
 Use lazy learning
