@@ -22,15 +22,27 @@
     - Missing values: 1.38%
 
 ### Steps:
- - [ ] Read the source data for training and testing the algorithms
- - [ ] Read and save the information from a training and their corresponding testing  file in a TrainMatrix and a TestMatrix, respectively. Normalize all the numerical attributes in the range [0..1].
- - [ ] Write a python fn that repeats the previous process for the 10-fold cross-validation files.
+ - [x] Read the source data for training and testing the algorithms
+ - [x] Read and save the information from a training and their corresponding testing  file in a TrainMatrix and a TestMatrix, respectively. Normalize all the numerical attributes in the range [0..1].
+ - [x] Write a python fn that repeats the previous process for the 10-fold cross-validation files.
  - [ ] Write a Python function for classifying, using a kNN algorithm.
  - [ ] Write a Python function for classifying, using an SVM algorithm.
  - [ ] Modify the kNN algorithm so that it includes a pre-processing for reducing the training set.
 
 
 **Note** - in 'Work2' directory we should have everything we will submit or is required to run the scripts
+
+### Notes from loading and parsing arrf files:
+The testing set contains more abnormal entries where:
+ - an entry is incomplete
+ - two incomplete entries are joined together
+
+To resolve abnormal entries the joined entries were seperated and then filled the attributes that don't fit the structure with '?' (for nominal attributes) or nans (for numerical attributes). The incomplete entries were filled with '?' and nans the same way.
+
+### Notes on normalisation
+ - For nominal values, where the value isn't specified, i.e set as '?', it is normalised as a 0 and other values are set as their index in the list of possible values
+ - The numerical values are normalised to a range of [0..1]
+
 
 ### Untidy notes from session 2 Labs:
 

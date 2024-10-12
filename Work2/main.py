@@ -1,12 +1,10 @@
 import argparse
 import pathlib
-import scipy
+
+from parser import get_data
+
 
 curr_dir = pathlib.Path(__file__).parent
-
-def loadarff(f):
-    # TODO: load arff data file
-    pass
 
 def main():
     parser = argparse.ArgumentParser(description="")
@@ -36,17 +34,18 @@ def main():
     if not data_dir.is_dir():
         raise argparse.ArgumentTypeError(f"The dataset directory {data_dir} could not be found.")
     
-    arrf_train_data = []
-    arrf_test_data = []
+    training_fns = []
+    testing_fns = []
     for fn in data_dir.iterdir():
         if not fn.is_file():
             continue
         if '.train' in fn.suffixes:
-            arrf_train_data.append(loadarff(fn))
-            print(f"Loaded training data file {fn}")
+            training_fns.append(fn)
         elif '.test' in fn.suffixes and args.test:
-            arrf_test_data.append(loadarff(fn))
-            print(f"Loaded testing data file {fn}")
+            testing_fns.append(fn)
+
+    (train_input, train_output), (test_input, test_output) = get_data(training_fns, testing_fns)
+
 
 if __name__ == "__main__":
     main()
