@@ -1,81 +1,63 @@
-import math
-import numpy as np
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+
 from loadarff import loadarff
 
-def get_normalising_minmax(data_sets):
-    print("Preparing for normalising data")
-    minmax = {}
-    for data in data_sets:
-        for batch in data:
-            for entry in batch[0].tolist():
-                for idx, val in enumerate(entry):
-                    if batch[1].types()[idx] == "numeric":
-                        attr_name = batch[1].names()[idx]
-                        if attr_name not in minmax:
-                            minmax[attr_name] = {"min": val, "max": val}
-                        elif not math.isnan(val) and minmax[attr_name]["min"] > val or math.isnan(minmax[attr_name]["min"]):
-                            minmax[attr_name]["min"] = val
-                        elif not math.isnan(val) and minmax[attr_name]["max"] < val or math.isnan(minmax[attr_name]["max"]):
-                            minmax[attr_name]["max"] = val
-    return minmax
+class MinMaxNormalisation:
+    def __init__(self):
+        self.minval = {}
+        self.maxval = {}
 
-def normalise_numeric(val, minmax):
-    if math.isnan(val):
-        return np.nan
-    return (val - minmax["min"]) / (minmax["max"] - minmax["min"])
+    def normalise(self, fold, name, values, train=True):
+        if train:
+            if fold not in self.minval:
+                self.minval[fold] = {}
+            if fold not in self.maxval:
+                self.maxval[fold] = {}
+            self.minval[fold][name] = values.min()
+            self.maxval[fold][name] = values.max()
+        return (values - self.minval[fold][name]) / (self.maxval[fold][name] - self.minval[fold][name])
+            
 
-def normalise_nominal(val, choices):
-    if val not in choices:
-        for ch in choices:
-            if set(val).issubset(set(ch)):
-                return choices.index(ch) + 1
-        if val == '?':
-            return 0
-    return choices.index(val) + 1
-
-def normalise(dataset, minmax):
-    if len(dataset) == 0:
+def normalise(dataframes, num_norm, train=True):
+    if len(dataframes) == 0:
         return []
+    le = LabelEncoder()
+    for i,df in enumerate(dataframes):
+        for name, dt in df.dtypes.items():
+            if dt.name == 'float64':
+                df[name] = num_norm.normalise(i, name, df[name], train)
+            else:
+                df[name] = le.fit_transform(df[name])
+    return
 
-    choices = {name:attr.values for name, attr in dataset[0][1]._attributes.items() if attr.type_name == "nominal"}
-    normalised_data = []
-    norm_class_data = []
-    for raw_data in dataset:
-        batch = []
-        class_batch = []
-        for entry in raw_data[0].tolist():
-            norm_entry = [0] * len(entry)
-            for idx, val in enumerate(entry):
-                # get attr type
-                attr_name = raw_data[1].names()[idx]
-                if raw_data[1].types()[idx] == "nominal":
-                    norm_val = normalise_nominal(val.decode("utf-8"), choices[attr_name])
-                    if attr_name == "class":
-                        class_batch.append(norm_val)
-                    else:
-                        norm_entry[idx] = norm_val
-                if raw_data[1].types()[idx] == "numeric":
-                    norm_val = normalise_numeric(val, minmax[attr_name])
-                    if attr_name == "class":
-                        class_batch.append(norm_val)
-                    else:
-                        norm_entry[idx] = norm_val
-            batch.append(norm_entry)
-        normalised_data.append(np.array(batch))
-        norm_class_data.append(np.array(class_batch))
-    return normalised_data, norm_class_data
 
 def get_data(training_fns, testing_fns):
-    training_raw = [loadarff(fn) for fn in training_fns]
-    testing_raw = [loadarff(fn) for fn in testing_fns]
+    training_ds = []
+    for fn in training_fns:
+        traw = loadarff(fn)
+        training_ds.append(pd.DataFrame(traw[0], columns=traw[1]._attributes.keys()))
 
-    # retrieve numerical variable min and max for value normalisation
-    norm_minmax = get_normalising_minmax([training_raw, testing_raw])
+    testing_ds = []
+    for fn in testing_fns:
+        traw = loadarff(fn)
+        testing_ds.append(pd.DataFrame(traw[0], columns=traw[1]._attributes.keys()))
 
     # normalise both datasets
+    numerical_normaliser = MinMaxNormalisation()
     print("Normalising training set")
-    training = normalise(training_raw, norm_minmax)
-    print("Normalising testing set")
-    testing = normalise(testing_raw, norm_minmax)
+    normalise(training_ds, numerical_normaliser)
 
-    return training, testing
+    print("Normalising testing set")
+    normalise(testing_ds, numerical_normaliser, train=False)
+
+    input_columns = list(training_ds[0].columns)
+    input_columns.remove('class')
+    output_column = 'class'
+
+    train_input = [tids[input_columns] for tids in training_ds]
+    train_output = [tods[output_column] for tods in training_ds]
+    test_input = [tids[input_columns] for tids in testing_ds]
+    test_output = [tods[output_column] for tods in training_ds]
+
+    return train_input, train_output, test_input, test_output

@@ -21,6 +21,12 @@ def main():
         default=curr_dir / "datasets",
         help="Path to the data directory."
     )
+    parser.add_argument(
+        "-l", "--limit",
+        type=int,
+        default=10,
+        help="Limit to how many datasets to load"
+    )
     
     # Parse the command line arguments
     args = parser.parse_args()
@@ -34,12 +40,14 @@ def main():
     for fn in data_dir.iterdir():
         if not fn.is_file():
             continue
+        if int(fn.suffixes[1][1:]) > args.limit:
+            break
         if '.train' in fn.suffixes:
             training_fns.append(fn)
-        elif '.test' in fn.suffixes and args.test:
+        elif '.test' in fn.suffixes:
             testing_fns.append(fn)
 
-    (train_input, train_output), (test_input, test_output) = get_data(training_fns, testing_fns)
+    train_input, train_output, test_input, test_output = get_data(training_fns, testing_fns)
 
     knn = kNN(k=1, distance_metric=DistanceType.EUCLIDEAN)
     knn.fit(train_input[0], train_output[0])
