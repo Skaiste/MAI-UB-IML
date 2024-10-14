@@ -2,6 +2,7 @@ import argparse
 import pathlib
 
 from parser import get_data
+from kNN import kNN, DistanceType
 
 
 curr_dir = pathlib.Path(__file__).parent
@@ -19,12 +20,6 @@ def main():
         type=pathlib.Path,
         default=curr_dir / "datasets",
         help="Path to the data directory."
-    )
-    parser.add_argument(
-        "-t", "--test",
-        action='store_true',
-        default=False,
-        help="Boolean flag to indicate whether to test the model (default: False)."
     )
     
     # Parse the command line arguments
@@ -45,6 +40,12 @@ def main():
             testing_fns.append(fn)
 
     (train_input, train_output), (test_input, test_output) = get_data(training_fns, testing_fns)
+
+    knn = kNN(k=1, distance_metric=DistanceType.EUCLIDEAN)
+    knn.fit(train_input[0], train_output[0])
+    predictions = knn.predict(test_input[0])
+
+    # TODO: compare predictions to test_output
 
 
 if __name__ == "__main__":
