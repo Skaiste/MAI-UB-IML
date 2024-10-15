@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
 from loadarff import loadarff
@@ -43,6 +44,39 @@ def get_data(training_fns, testing_fns):
         traw = loadarff(fn)
         testing_ds.append(pd.DataFrame(traw[0], columns=traw[1]._attributes.keys()))
 
+    # retrieving means for numerical and most frequent category for nominal data
+    allow_to_remove = 'TBG'
+    numerical_means = {}
+    common_nominals = {}
+    for i, df in enumerate(training_ds):
+        numerical_means[i] = {}
+        common_nominals[i] = {}
+        for name, dt in df.dtypes.items():
+            if dt.name == 'float64':
+                numerical_means[i][name] = np.nanmean(df[name])
+                if len(df[name].unique()) == 1 and name == allow_to_remove:
+                    df.drop(name, axis='columns', inplace=True)
+            else:
+                common_nominals[i][name] = df[name].mode().values[0].decode('utf-8')
+    
+    for i, df in enumerate(testing_ds):
+        for name, dt in df.dtypes.items():
+            if dt.name == 'float64':
+                if len(df[name].unique()) == 1 and name == allow_to_remove:
+                    df.drop(name, axis='columns', inplace=True)
+
+    for i, df in enumerate(training_ds):
+        for j, row in df.iterrows():
+            count = np.sum(row.isna().values)
+            if count > len(df.dtypes) * 0.25:
+                df.drop(j, inplace=True)
+
+            for k in range(len(row)):
+                
+                if np.isnan([row[k]]):
+                    breakpoint()
+
+
     # normalise both datasets
     numerical_normaliser = MinMaxNormalisation()
     print("Normalising training set")
@@ -52,8 +86,8 @@ def get_data(training_fns, testing_fns):
     normalise(testing_ds, numerical_normaliser, train=False)
 
     input_columns = list(training_ds[0].columns)
-    input_columns.remove('class')
-    output_column = 'class'
+    input_columns.remove('Class')
+    output_column = 'Class'
 
     train_input = [tids[input_columns] for tids in training_ds]
     train_output = [tods[output_column] for tods in training_ds]

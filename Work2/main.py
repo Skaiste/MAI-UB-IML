@@ -12,7 +12,7 @@ def main():
     parser.add_argument(
         "-d", "--dataset",
         type=str,
-        default="adult",
+        default="sick",
         help="Name of the dataset to process, adult on default."
     )
     parser.add_argument(

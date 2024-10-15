@@ -12,6 +12,8 @@
     - Instances belonging to the minority class: 23.93%
     - Missing values: 0.95%
 
+1. Sick
+
 2. Mushroom
     - Number of Cases: 8 124
     - Nominal attributes: 22
