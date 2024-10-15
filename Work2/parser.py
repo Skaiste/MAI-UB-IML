@@ -72,8 +72,7 @@ def get_data(training_fns, testing_fns):
                 df.drop(j, inplace=True)
 
             for k in range(len(row)):
-                
-                if np.isnan([row[k]]):
+                if not isinstance(row[k], bytes) and np.isnan(row[k]):
                     breakpoint()
 
 
