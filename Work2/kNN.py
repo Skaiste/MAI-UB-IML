@@ -1,12 +1,14 @@
 from enum import Enum
 
-
+# Skaiste
 def euclidean_distance(x, y):
     pass
 
+# Tatevik
 def minkowski_distance(x, y):
     pass
 
+# Wiktoria
 def manhattan_distance(x, y):
     pass
 
@@ -14,6 +16,18 @@ class DistanceType(Enum):
     EUCLIDEAN = 0
     MINKOWSKI = 1
     MANHATTAN = 2
+
+# Skaiste
+def majorityClassVS():
+    pass
+
+# Tatevik
+def innverseDistanceWeightedVS():
+    pass
+
+# Wiktoria
+def sheppardsWorkVS():
+    pass
 
 class kNN:
     def __init__(self, k=1, distance_metric=DistanceType.EUCLIDEAN):
@@ -39,6 +53,13 @@ class kNN:
             # select the closest neighbour(s)
 
             # get the outputs of the nearest neighbours
+
+            # apply voting schemes
+
+            # apply weigting strategies:
+            # - equal - Skaiste
+            # - filter - Tatevik
+            # - wrapper - Wiktoria
 
             # get the most common output across the outputs
             continue
