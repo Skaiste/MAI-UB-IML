@@ -2,7 +2,7 @@ import argparse
 import pathlib
 
 from parser import get_data
-from kNN import kNN, DistanceType
+from kNN import kNN, DistanceType, VotingSchemas, WeigthingStrategies
 
 
 curr_dir = pathlib.Path(__file__).parent
@@ -49,12 +49,12 @@ def main():
 
     train_input, train_output, test_input, test_output = get_data(training_fns, testing_fns)
 
-    knn = kNN(k=1, distance_metric=DistanceType.EUCLIDEAN)
+    knn = kNN(k=1, dm=DistanceType.EUCLIDEAN, vs=VotingSchemas.MAJORITY_CLASS, ws=WeigthingStrategies.EQUAL)
     knn.fit(train_input, train_output)
     for fold in range(len(train_input)):
         predictions = knn.predict(test_input[fold], fold)
 
-        # TODO: compare predictions to test_output
+        # TODO: evaluate predictions to test_output
 
 
 if __name__ == "__main__":

@@ -1,8 +1,10 @@
+import numpy as np
+import pandas as pd
 from enum import Enum
 
 # Skaiste
 def euclidean_distance(x, y):
-    return x
+    return np.sqrt(np.sum((x - y) ** 2, axis=1))
 
 # Tatevik
 def minkowski_distance(x, y):
@@ -18,8 +20,8 @@ class DistanceType(Enum):
     MANHATTAN = 2
 
 # Skaiste
-def majority_class_vs():
-    pass
+def majority_class_vs(outputs):
+    return outputs.mode().values[0]
 
 # Tatevik
 def innverse_distance_weighted_vs():
@@ -29,15 +31,36 @@ def innverse_distance_weighted_vs():
 def sheppards_work_vs():
     pass
 
+
+class VotingSchemas(Enum):
+    MAJORITY_CLASS = 0
+    INVERSE_DISTANCE = 1
+    SHEPHERDS_WORK = 2
+
+
+class WeigthingStrategies(Enum):
+    EQUAL = 0
+    FILTER = 1
+    WRAPPER = 2
+
 class kNN:
-    def __init__(self, k=1, distance_metric=DistanceType.EUCLIDEAN):
+    def __init__(self, k=1, dm=DistanceType.EUCLIDEAN, vs=VotingSchemas.MAJORITY_CLASS, ws=WeigthingStrategies.EQUAL):
         self.k = k
-        if distance_metric == DistanceType.EUCLIDEAN:
+        if dm == DistanceType.EUCLIDEAN:
             self.distance = euclidean_distance
-        elif distance_metric == DistanceType.MINKOWSKI:
+        elif dm == DistanceType.MINKOWSKI:
             self.distance = minkowski_distance
-        elif distance_metric == DistanceType.MANHATTAN:
+        elif dm == DistanceType.MANHATTAN:
             self.distance = manhattan_distance
+
+        if vs == VotingSchemas.MAJORITY_CLASS:
+            self.voting_scheme = majority_class_vs
+        elif vs == VotingSchemas.INVERSE_DISTANCE:
+            self.voting_scheme = innverse_distance_weighted_vs
+        elif vs == VotingSchemas.SHEPHERDS_WORK:
+            self.voting_scheme = sheppards_work_vs
+
+        self.weighting_strategy = ws
     
     def fit(self, train_input, train_output):
         self.train_input = train_input
@@ -45,29 +68,29 @@ class kNN:
 
     def predict(self, test_input, fold):
         # predict output for each input
-        predictions = []
-        for _, x in test_input.iterrows():
+        predictions = pd.Series([], dtype=self.train_output[fold].dtype, name=self.train_output[fold].name)
+        for idx, x in test_input.iterrows():
             # calculate distance to each point in the training input set
             # use self.distance
-            # distances = [self.distance(x, x_train) for _, x_train in self.train_input[fold].iterrows()]
-
-            # sum each row
-            # distance_sums = [sum(d) for d in distances]
+            distances = self.distance(x, self.train_input[fold]).sort_values()
 
             # select the closest neighbour(s)
-
-
+            neighbours = distances.iloc[:self.k]
 
             # get the outputs of the nearest neighbours
+            outputs = self.train_output[fold].iloc[list(neighbours.keys())]
 
             # apply voting schemes
+            output = self.voting_scheme(outputs)
 
             # apply weigting strategies:
-            # - equal - Skaiste
             # - filter - Tatevik
+            if self.weighting_strategy == WeigthingStrategies.FILTER:
+                pass
             # - wrapper - Wiktoria
+            elif self.weighting_strategy == WeigthingStrategies.WRAPPER:
+                pass
 
-            # get the most common output across the outputs
-            continue
+            predictions.loc[idx] = output
 
         return predictions
