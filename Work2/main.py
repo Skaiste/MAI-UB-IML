@@ -40,8 +40,8 @@ def main():
     for fn in data_dir.iterdir():
         if not fn.is_file():
             continue
-        if int(fn.suffixes[1][1:]) > args.limit:
-            break
+        if int(fn.suffixes[1][1:]) > int(args.limit):
+            continue
         if '.train' in fn.suffixes:
             training_fns.append(fn)
         elif '.test' in fn.suffixes:
@@ -53,8 +53,10 @@ def main():
     knn.fit(train_input, train_output)
     for fold in range(len(train_input)):
         predictions = knn.predict(test_input[fold], fold)
-
-        # TODO: evaluate predictions to test_output
+        matches = test_output[fold] == predictions.reindex(test_output[fold].index)
+        result_counts = matches.value_counts()
+        accuracy = result_counts[True] / matches.count() * 100
+        print(f"Fold {fold}: Accuracy: {accuracy:.2f}%")
 
 
 if __name__ == "__main__":
