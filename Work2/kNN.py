@@ -2,7 +2,7 @@ from enum import Enum
 
 # Skaiste
 def euclidean_distance(x, y):
-    pass
+    return x
 
 # Tatevik
 def minkowski_distance(x, y):
@@ -18,15 +18,15 @@ class DistanceType(Enum):
     MANHATTAN = 2
 
 # Skaiste
-def majorityClassVS():
+def majority_class_vs():
     pass
 
 # Tatevik
-def innverseDistanceWeightedVS():
+def innverse_distance_weighted_vs():
     pass
 
 # Wiktoria
-def sheppardsWorkVS():
+def sheppards_work_vs():
     pass
 
 class kNN:
@@ -43,14 +43,20 @@ class kNN:
         self.train_input = train_input
         self.train_output = train_output
 
-    def predict(self, test_input):
+    def predict(self, test_input, fold):
         # predict output for each input
         predictions = []
-        for i in test_input:
+        for _, x in test_input.iterrows():
             # calculate distance to each point in the training input set
             # use self.distance
+            # distances = [self.distance(x, x_train) for _, x_train in self.train_input[fold].iterrows()]
+
+            # sum each row
+            # distance_sums = [sum(d) for d in distances]
 
             # select the closest neighbour(s)
+
+
 
             # get the outputs of the nearest neighbours
 

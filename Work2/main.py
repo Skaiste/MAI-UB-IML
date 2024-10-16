@@ -50,10 +50,11 @@ def main():
     train_input, train_output, test_input, test_output = get_data(training_fns, testing_fns)
 
     knn = kNN(k=1, distance_metric=DistanceType.EUCLIDEAN)
-    knn.fit(train_input[0], train_output[0])
-    predictions = knn.predict(test_input[0])
+    knn.fit(train_input, train_output)
+    for fold in range(len(train_input)):
+        predictions = knn.predict(test_input[fold], fold)
 
-    # TODO: compare predictions to test_output
+        # TODO: compare predictions to test_output
 
 
 if __name__ == "__main__":
