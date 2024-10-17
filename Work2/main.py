@@ -1,5 +1,6 @@
 import argparse
 import pathlib
+from sklearn.metrics import accuracy_score
 
 from parser import get_data
 from kNN import kNN, DistanceType, VotingSchemas, WeigthingStrategies
@@ -56,6 +57,7 @@ def main():
         matches = test_output[fold] == predictions.reindex(test_output[fold].index)
         result_counts = matches.value_counts()
         accuracy = result_counts[True] / matches.count() * 100
+        # accuracy = accuracy_score(test_output[fold], predictions)
         print(f"Fold {fold}: Accuracy: {accuracy:.2f}%")
 
 

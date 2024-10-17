@@ -107,6 +107,6 @@ def get_data(training_fns, testing_fns):
     train_input = [tids[input_columns] for tids in training_ds]
     train_output = [tods[output_column] for tods in training_ds]
     test_input = [tids[input_columns] for tids in testing_ds]
-    test_output = [tods[output_column] for tods in training_ds]
+    test_output = [tods[output_column] for tods in testing_ds]
 
     return train_input, train_output, test_input, test_output
