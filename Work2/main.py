@@ -2,7 +2,7 @@ import argparse
 import pathlib
 from sklearn.metrics import accuracy_score
 
-from parser import get_data
+from data_parser import get_data
 from kNN import kNN, DistanceType, VotingSchemas, WeigthingStrategies
 
 
@@ -50,7 +50,8 @@ def main():
 
     train_input, train_output, test_input, test_output = get_data(training_fns, testing_fns)
 
-    knn = kNN(k=1, dm=DistanceType.EUCLIDEAN, vs=VotingSchemas.MAJORITY_CLASS, ws=WeigthingStrategies.EQUAL)
+
+    knn = kNN(k=100, dm=DistanceType.MINKOWSKI, vs=VotingSchemas.INVERSE_DISTANCE, ws=WeigthingStrategies.EQUAL)
     knn.fit(train_input, train_output)
     for fold in range(len(train_input)):
         predictions = knn.predict(test_input[fold], fold)

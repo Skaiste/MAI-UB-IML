@@ -2,13 +2,14 @@ import numpy as np
 import pandas as pd
 from enum import Enum
 
+
 # Skaiste
 def euclidean_distance(x, y):
     return np.sqrt(np.sum((x - y) ** 2, axis=1))
 
 # Tatevik
-def minkowski_distance(x, y):
-    pass
+def minkowski_distance(x, y,r = 3):
+    return ((abs(x-y)**r).sum(axis = 1))**(1/r)
 
 # Wiktoria
 def manhattan_distance(x, y):
@@ -24,10 +25,16 @@ def majority_class_vs(outputs):
     return outputs.mode().values[0]
 
 # Tatevik
-def innverse_distance_weighted_vs():
-    pass
-
-# Wiktoria
+def innverse_distance_weighted_vs(outputs,distances):
+    votes = {}
+    for i in range(len(outputs)):
+        vote = 1/distances[i]
+        label = outputs.iloc[i]
+        if label not in votes:
+            votes[label] = 0
+        votes[label] = vote+votes[label]
+    return max(votes, key=votes.get)
+    # Wiktoria
 def sheppards_work_vs():
     pass
 
@@ -81,7 +88,11 @@ class kNN:
             outputs = self.train_output[fold].iloc[list(neighbours.keys())]
 
             # apply voting schemes
-            output = self.voting_scheme(outputs)
+            #Edit by Tatevik
+            if self.distance == minkowski_distance:
+                output = self.voting_scheme(outputs,distances)
+            else:
+                output = self.voting_scheme(outputs)
 
             # apply weigting strategies:
             # - filter - Tatevik
