@@ -13,7 +13,7 @@ def minkowski_distance(x, y,r = 3):
 
 # Wiktoria
 def manhattan_distance(x, y):
-    pass
+    return np.sum(np.abs(x - y), axis=1)
 
 class DistanceType(Enum):
     EUCLIDEAN = 0
@@ -35,8 +35,17 @@ def innverse_distance_weighted_vs(outputs,distances):
         votes[label] = vote+votes[label]
     return max(votes, key=votes.get)
     # Wiktoria
-def sheppards_work_vs():
-    pass
+def sheppards_work_vs(distances, p=2):
+    # add a small epsilon to the distances (to prevent division by 0)
+    epsilon = 1e-9
+    distances = np.array(distances) + epsilon
+
+    # calculate inverse distance weights
+    weights = 1 / (distances ** p)
+
+    # normalize the weights so they sum to 1
+    weights = weights / np.sum(weights)
+    return weights
 
 
 class VotingSchemas(Enum):
