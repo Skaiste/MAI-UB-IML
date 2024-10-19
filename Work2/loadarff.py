@@ -163,8 +163,7 @@ class NominalAttribute(Attribute):
             ###                    but is a substring of one of the values (this is done because
             ###                    the data_str can contain some typos, and we just return the first match
             ###                    as a substring with one of the values).
-
-
+            
             for v in self.values:
                 if set(data_str).issubset(set(v)):
                     return v

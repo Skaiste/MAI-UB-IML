@@ -1,6 +1,7 @@
 import argparse
 import pathlib
-from sklearn.metrics import accuracy_score
+import json
+import time
 
 from data_parser import get_data
 from kNN import kNN, DistanceType, VotingSchemas, WeigthingStrategies
@@ -8,8 +9,56 @@ from kNN import kNN, DistanceType, VotingSchemas, WeigthingStrategies
 
 curr_dir = pathlib.Path(__file__).parent
 
+def run_knn(train_input, train_output, test_input, test_output, args):
+    shorten_name = lambda n: ''.join([p[:2].capitalize() for p in n.split('_')])
+    results_fn = f"k{args.k}_{shorten_name(args.distance_type.value)}"
+    if args.distance_type == DistanceType.MINKOWSKI:
+        results_fn += str(args.minkowski_r)
+    results_fn += f"_{shorten_name(args.voting_schema.value)}_{shorten_name(args.weighting_strategy.value)}.json"
+    results_path = args.result_directory / results_fn
+
+    result = {
+        'folds': {i:{} for i in range(len(train_input))},
+        'dataset': args.dataset,
+        'distance': args.distance_type.value,
+        'voting': args.voting_schema.value,
+        'weighting': args.weighting_strategy.value,
+    }
+    if args.distance_type == DistanceType.MINKOWSKI:
+        result['minkowski_r'] = args.minkowski_r
+
+    for fold in range(len(train_input)):
+        knn = kNN(k=args.k, dm=args.distance_type, vs=args.voting_schema, ws=args.weighting_strategy, r=args.minkowski_r)
+        knn.fit(train_input[fold], train_output[fold])
+        start_time = time.time()
+        predictions = knn.predict(test_input[fold])
+        end_time = time.time()
+        breakpoint()
+        matches = test_output[fold] == predictions.reindex(test_output[fold].index)
+        result_counts = matches.value_counts()
+        accuracy = result_counts[True] / matches.count() * 100
+        print(f"Fold {fold}: Accuracy: {accuracy:.2f}%")
+        result['folds'][fold]['accuracy'] = accuracy
+        result['folds'][fold]['correct'] = int(result_counts[True] if True in result_counts else 0)
+        result['folds'][fold]['incorrect'] = int(result_counts[False] if False in result_counts else 0)
+        result['folds'][fold]['predictions'] = list([s.decode('utf-8') for s in predictions])
+        result['folds'][fold]['pred_time'] = end_time - start_time
+
+    try:
+        with open(results_path, "w") as f:
+            json.dump(result, f, indent=4)
+    except Exception:
+        breakpoint()
+        i=0
+
 def main():
-    parser = argparse.ArgumentParser(description="")
+    parser = argparse.ArgumentParser(description="Runs an algorithm once on provided data")
+    parser.add_argument(
+        "-k",
+        type=int,
+        default=1,
+        help="k number of neighbours to use in k-NN algorithm"
+    )
     parser.add_argument(
         "-d", "--dataset",
         type=str,
@@ -28,38 +77,84 @@ def main():
         default=10,
         help="Limit to how many datasets to load"
     )
+    parser.add_argument(
+        "-r", "--result-directory",
+        type=pathlib.Path,
+        default=curr_dir / "results",
+        help="Path to the results directory."
+    )
+    parser.add_argument(
+        "-c", "--cache-directory",
+        type=pathlib.Path,
+        default=curr_dir / "cache",
+        help="Path to the cache directory for normalised values."
+    )
+    parser.add_argument(
+        "--disable-cache",
+        action='store_true',
+        default=False,
+        help="Disable saving to and loading normalised data from cache"
+    )
+    parser.add_argument(
+        "-t", "--distance-type",
+        choices=[dt.value for dt in DistanceType],
+        default=DistanceType.EUCLIDEAN.value,
+        help=f"Function for calculating distance, default: {DistanceType.EUCLIDEAN.value}."
+    )
+    parser.add_argument(
+        "-v", "--voting-schema",
+        choices=[vs.value for vs in VotingSchemas],
+        default=VotingSchemas.MAJORITY_CLASS.value,
+        help=f"Voting schema for selecting neighbors, default: {VotingSchemas.MAJORITY_CLASS.value}."
+    )
+    parser.add_argument(
+        "-R", "--minkowski-r",
+        type=int,
+        default=1,
+        help="r value for minkowski algorithm, default: 1"
+    )
+    parser.add_argument(
+        "-w", "--weighting-strategy",
+        choices=[ws.value for ws in WeigthingStrategies],
+        default=WeigthingStrategies.EQUAL.value,
+        help=f"Weighting scheme for scaling neighbors, default: {WeigthingStrategies.EQUAL.value}."
+    )
     
     # Parse the command line arguments
     args = parser.parse_args()
+
+    args.distance_type = DistanceType(args.distance_type.lower())
+    args.voting_schema = VotingSchemas(args.voting_schema.lower())
+    args.weighting_strategy = WeigthingStrategies(args.weighting_strategy.lower())
+    
+    args.result_directory = args.result_directory / args.dataset
+    args.result_directory.mkdir(parents=True, exist_ok=True)
+
+    if not args.disable_cache:
+        args.cache_directory = args.cache_directory / args.dataset
+        args.cache_directory.mkdir(parents=True, exist_ok=True)
 
     data_dir = args.path / args.dataset
     if not data_dir.is_dir():
         raise argparse.ArgumentTypeError(f"The dataset directory {data_dir} could not be found.")
     
-    training_fns = []
-    testing_fns = []
+    data_fns = {}
     for fn in data_dir.iterdir():
         if not fn.is_file():
             continue
-        if int(fn.suffixes[1][1:]) > int(args.limit):
+        fold = int(fn.suffixes[1][1:])
+        if fold > int(args.limit):
             continue
+        if fold not in data_fns:
+            data_fns[fold] = {}
         if '.train' in fn.suffixes:
-            training_fns.append(fn)
+            data_fns[fold]['training'] = fn
         elif '.test' in fn.suffixes:
-            testing_fns.append(fn)
+            data_fns[fold]['testing'] = fn
 
-    train_input, train_output, test_input, test_output = get_data(training_fns, testing_fns)
+    train_input, train_output, test_input, test_output = get_data(data_fns, not args.disable_cache, args.cache_directory)
 
-
-    knn = kNN(k=100, dm=DistanceType.MINKOWSKI, vs=VotingSchemas.INVERSE_DISTANCE, ws=WeigthingStrategies.EQUAL)
-    knn.fit(train_input, train_output)
-    for fold in range(len(train_input)):
-        predictions = knn.predict(test_input[fold], fold)
-        matches = test_output[fold] == predictions.reindex(test_output[fold].index)
-        result_counts = matches.value_counts()
-        accuracy = result_counts[True] / matches.count() * 100
-        # accuracy = accuracy_score(test_output[fold], predictions)
-        print(f"Fold {fold}: Accuracy: {accuracy:.2f}%")
+    run_knn(train_input, train_output, test_input, test_output, args)
 
 
 if __name__ == "__main__":
