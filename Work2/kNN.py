@@ -1,19 +1,21 @@
 import numpy as np
 import pandas as pd
 from enum import Enum
+from sklearn.feature_selection import mutual_info_classif
+from sklearn_relief import ReliefF
 
 
 # Skaiste
-def euclidean_distance(x, y):
-    return np.sqrt(np.sum((x - y) ** 2, axis=1))
+def euclidean_distance(x, y, weights):
+    return np.sqrt(np.sum(weights * (x - y) ** 2, axis=1))
 
 # Tatevik
-def minkowski_distance(x, y, r=1):
-    return ((abs(x-y)**r).sum(axis = 1))**(1/r)
+def minkowski_distance(x, y, weights, r=1):
+    return ((weights * abs(x-y)**r).sum(axis = 1))**(1/r)
 
 # Wiktoria
-def manhattan_distance(x, y):
-    return np.sum(np.abs(x - y), axis=1)
+def manhattan_distance(x, y, weights):
+    return np.sum(weights * np.abs(x - y), axis=1)
 
 class DistanceType(Enum):
     EUCLIDEAN = 'euclidean'
@@ -54,12 +56,14 @@ class VotingSchemas(Enum):
     INVERSE_DISTANCE = 'inverse_distance'
     SHEPHERDS_WORK = 'shepherds_work'
 
+
 class WeigthingStrategies(Enum):
     EQUAL = 'equal'
     FILTER = 'filter'
     WRAPPER = 'wrapper'
 
-class kNN:
+
+class KNN:
     def __init__(self, k=1, dm=DistanceType.EUCLIDEAN, vs=VotingSchemas.MAJORITY_CLASS, ws=WeigthingStrategies.EQUAL, r=1):
         self.k = k
         self.r = r
@@ -83,15 +87,26 @@ class kNN:
         self.train_input = train_input
         self.train_output = train_output
 
+        if self.weighting_strategy == WeigthingStrategies.FILTER:
+            weights = mutual_info_classif(train_input, train_output)
+            self.feature_weights = weights / np.sum(weights)
+        elif self.weighting_strategy == WeigthingStrategies.WRAPPER:
+            relieff = ReliefF(n_features=train_input.shape[1])
+            relieff.fit(train_input.values, train_output.values)
+            self.feature_weights = relieff.w_ 
+        else:
+            self.feature_weights = np.ones((train_input.shape[1],))
+
+
     def predict(self, test_input):
         # predict output for each input
         predictions = pd.Series([], dtype=self.train_output.dtype, name=self.train_output.name)
         for idx, x in test_input.iterrows():
             # calculate distance to each point in the training input set
             if self.distance == minkowski_distance:
-                distances = self.distance(x, self.train_input, self.r)
+                distances = self.distance(x, self.train_input, self.feature_weights, self.r)
             else:
-                distances = self.distance(x, self.train_input)
+                distances = self.distance(x, self.train_input, self.feature_weights)
             distances = distances.sort_values()
 
             # select the closest neighbour(s)
@@ -102,14 +117,6 @@ class kNN:
 
             # apply voting schemes
             output = self.voting_scheme(outputs, distances)
-
-            # apply weigting strategies:
-            # - filter - Tatevik
-            if self.weighting_strategy == WeigthingStrategies.FILTER:
-                pass
-            # - wrapper - Wiktoria
-            elif self.weighting_strategy == WeigthingStrategies.WRAPPER:
-                pass
 
             predictions.loc[idx] = output
 

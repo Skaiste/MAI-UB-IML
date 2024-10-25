@@ -138,8 +138,10 @@ def get_data(data_fns, cache=True, cache_dir=None):
             output_column = 'class'
 
         train_input.append(training_df[input_columns])
+        training_df[output_column] = training_df[output_column].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x)
         train_output.append(training_df[output_column])
         test_input.append(testing_df[input_columns])
+        testing_df[output_column] = testing_df[output_column].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x)
         test_output.append(testing_df[output_column])
 
     return train_input, train_output, test_input, test_output

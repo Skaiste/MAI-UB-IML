@@ -1,8 +1,9 @@
 import argparse
 import pathlib
 
-from main import run_knn
-from kNN import DistanceType, VotingSchemas, WeigthingStrategies
+from main import run_knn, run_svm
+from KNN import DistanceType, VotingSchemas, WeigthingStrategies
+from SVM import KernelType
 from data_parser import get_data
 
 curr_dir = pathlib.Path(__file__).parent
@@ -69,24 +70,31 @@ def main():
 
     args.minkowski_r = 1 # default value, need to set it even when minkowski isn't used for distance
 
+    # run KNN models
     possible_k = [1, 3, 5, 7]
     for dt in DistanceType:
         args.distance_type = dt
         for vs in VotingSchemas:
             args.voting_schema = vs
+            if vs == VotingSchemas.SHEPHERDS_WORK: continue
             for ws in WeigthingStrategies:
-                if ws != WeigthingStrategies.EQUAL: continue
                 args.weighting_strategy = ws
                 for k in possible_k:
                     args.k = k
                     if dt == DistanceType.MINKOWSKI:
                         for r in [1, 2]:
                             args.minkowski_r = r
-                            print(f"Running with: k = {k}, distance = {dt.value} where r = {r}, voting = {vs.value}, weights = {ws.value}")
+                            print(f"Running KNN with: k = {k}, distance = {dt.value} where r = {r}, voting = {vs.value}, weights = {ws.value}")
                             run_knn(train_input, train_output, test_input, test_output, args)
                     else:
-                        print(f"Running with: k = {k}, distance = {dt.value}, voting = {vs.value}, weights = {ws.value}")
+                        print(f"Running KNN with: k = {k}, distance = {dt.value}, voting = {vs.value}, weights = {ws.value}")
                         run_knn(train_input, train_output, test_input, test_output, args)
+
+    # run SVM models
+    for kt in KernelType:
+        args.kernel = kt
+        print(f"Running SVM with kernel = {kt.value}")
+        run_svm(train_input, train_output, test_input, test_output, args)
 
 
 if __name__ == "__main__":
