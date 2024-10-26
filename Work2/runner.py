@@ -2,7 +2,7 @@ import argparse
 import pathlib
 
 from main import run_knn, run_svm
-from KNN import DistanceType, VotingSchemas, WeigthingStrategies
+from KNN import DistanceType, VotingSchemas, WeigthingStrategies, ReductionMethod
 from SVM import KernelType
 from data_parser import get_data
 
@@ -69,6 +69,7 @@ def main():
     train_input, train_output, test_input, test_output = get_data(data_fns, not args.disable_cache, args.cache_directory)
 
     args.minkowski_r = 1 # default value, need to set it even when minkowski isn't used for distance
+    args.instance_reduction = ReductionMethod.NO_REDUCTION
 
     # run KNN models
     possible_k = [1, 3, 5, 7]
@@ -76,7 +77,6 @@ def main():
         args.distance_type = dt
         for vs in VotingSchemas:
             args.voting_schema = vs
-            if vs == VotingSchemas.SHEPHERDS_WORK: continue
             for ws in WeigthingStrategies:
                 args.weighting_strategy = ws
                 for k in possible_k:
@@ -85,16 +85,16 @@ def main():
                         for r in [1, 2]:
                             args.minkowski_r = r
                             print(f"Running KNN with: k = {k}, distance = {dt.value} where r = {r}, voting = {vs.value}, weights = {ws.value}")
-                            run_knn(train_input, train_output, test_input, test_output, args)
+                            run_knn(train_input, train_output, test_input, test_output, args, skip_if_exists=True)
                     else:
                         print(f"Running KNN with: k = {k}, distance = {dt.value}, voting = {vs.value}, weights = {ws.value}")
-                        run_knn(train_input, train_output, test_input, test_output, args)
+                        run_knn(train_input, train_output, test_input, test_output, args, skip_if_exists=True)
 
     # run SVM models
     for kt in KernelType:
         args.kernel = kt
         print(f"Running SVM with kernel = {kt.value}")
-        run_svm(train_input, train_output, test_input, test_output, args)
+        run_svm(train_input, train_output, test_input, test_output, args, skip_if_exists=True)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ import time
 from enum import Enum
 
 from data_parser import get_data
-from KNN import KNN, DistanceType, VotingSchemas, WeigthingStrategies
+from KNN import KNN, DistanceType, VotingSchemas, WeigthingStrategies, ReductionMethod
 from SVM import SVM, KernelType
 
 
@@ -17,27 +17,35 @@ class ModelTypes(Enum):
     SVM = 'SVM'
 
 
-def run_knn(train_input, train_output, test_input, test_output, args):
+def run_knn(train_input, train_output, test_input, test_output, args, skip_if_exists=False):
     shorten_name = lambda n: ''.join([p[:2].capitalize() for p in n.split('_')])
     results_fn = f"k{args.k}_{shorten_name(args.distance_type.value)}"
     if args.distance_type == DistanceType.MINKOWSKI:
         results_fn += str(args.minkowski_r)
-    results_fn += f"_{shorten_name(args.voting_schema.value)}_{shorten_name(args.weighting_strategy.value)}.json"
+    results_fn += f"_{shorten_name(args.voting_schema.value)}"
+    results_fn += f"_{shorten_name(args.weighting_strategy.value)}"
+    if args.instance_reduction != ReductionMethod.NO_REDUCTION:
+        results_fn += f"_{args.instance_reduction.value}"
+    results_fn += ".json"
     results_path = args.result_directory / results_fn
+    if skip_if_exists and results_path.is_file():
+        return
 
     result = {
         'model': 'KNN',
+        'k': args.k,
         'folds': {i:{} for i in range(len(train_input))},
         'dataset': args.dataset,
         'distance': args.distance_type.value,
         'voting': args.voting_schema.value,
         'weighting': args.weighting_strategy.value,
+        'reduction': args.instance_reduction.value
     }
     if args.distance_type == DistanceType.MINKOWSKI:
         result['minkowski_r'] = args.minkowski_r
 
     for fold in range(len(train_input)):
-        knn = KNN(k=args.k, dm=args.distance_type, vs=args.voting_schema, ws=args.weighting_strategy, r=args.minkowski_r)
+        knn = KNN(k=args.k, dm=args.distance_type, vs=args.voting_schema, ws=args.weighting_strategy, rm=args.instance_reduction, r=args.minkowski_r)
         knn.fit(train_input[fold], train_output[fold])
 
         start_time = time.time()
@@ -59,11 +67,14 @@ def run_knn(train_input, train_output, test_input, test_output, args):
         json.dump(result, f, indent=4)
 
 
-def run_svm(train_input, train_output, test_input, test_output, args):
-    results_fn = f"SVM_{args.kernel}.json"
+def run_svm(train_input, train_output, test_input, test_output, args, skip_if_exists=False):
+    results_fn = f"SVM_{args.kernel.value}.json"
     results_path = args.result_directory / results_fn
+    if skip_if_exists and results_path.is_file():
+        return
+        
     result = {
-        'model': 'KNN',
+        'model': 'SVM',
         'folds': {i:{} for i in range(len(train_input))},
         'dataset': args.dataset,
         'kernel': args.kernel.value,
@@ -160,6 +171,12 @@ def main():
         help=f"KNN: Weighting scheme for scaling neighbors, default: {WeigthingStrategies.EQUAL.value}."
     )
     parser.add_argument(
+        "-i", "--instance-reduction",
+        choices=[rm.value for rm in ReductionMethod],
+        default=ReductionMethod.NO_REDUCTION.value,
+        help=f"Instance reduction method, default: {ReductionMethod.NO_REDUCTION.value}."
+    )
+    parser.add_argument(
         "-m", "--model",
         choices=[m.value for m in ModelTypes],
         default=ModelTypes.KNN.value,
@@ -179,6 +196,7 @@ def main():
     args.voting_schema = VotingSchemas(args.voting_schema.lower())
     args.weighting_strategy = WeigthingStrategies(args.weighting_strategy.lower())
     args.kernel = KernelType(args.kernel.lower())
+    args.instance_reduction = ReductionMethod(args.instance_reduction.lower())
     
     args.result_directory = args.result_directory / args.dataset
     args.result_directory.mkdir(parents=True, exist_ok=True)
