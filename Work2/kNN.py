@@ -1,3 +1,5 @@
+from distutils.dep_util import newer
+
 import numpy as np
 import pandas as pd
 from enum import Enum
@@ -168,6 +170,57 @@ class KNN:
             print(f"Final reduced dataset size: {len(reduced_X)} instances.")
 
             return reduced_X, reduced_y
+    # Tatevik
+    def fcnn1(self):
+        unique_labels = self.train_output.unique()
+
+        centroids = set()
+        S = set()
+        nearest = {p: None for p in self.train_input.index}
+        for class_ in unique_labels:
+            all_class = self.train_input[self.train_output == class_]
+            all_mean = all_class.mean(axis = 0)
+            all_mean = pd.DataFrame([all_mean.values] * all_class.shape[0], columns=all_class.columns)
+            distances = self.distance(all_mean,all_class, self.feature_weights)
+            #centroids[class_] = self.train_input.iloc[distances.idxmin()].index
+            centroids.add(self.train_input.index[distances.idxmin()])
+        difference_s = set(centroids)
+        i = 0
+        while difference_s:
+            print(i)
+            i+=1
+            S.update(difference_s)
+            rep = {p: None for p in S}
+
+            for q in self.train_input.index.difference(S):
+                for p in difference_s:
+
+                    if nearest[q]:
+                        if  self.distance(self.train_input.iloc[nearest[q]].to_frame().T,self.train_input.iloc[q].to_frame().T,self.feature_weights).iloc[0]> self.distance(self.train_input.iloc[p].to_frame().T,self.train_input.iloc[q].to_frame().T,self.feature_weights).iloc[0]:
+                            nearest[q] = p
+                    else:
+                        nearest[q] = p
+
+                if rep[nearest[q]]:
+                    if (self.train_output.iloc[q] != self.train_output.iloc[nearest[q]]) and (self.distance(self.train_input.iloc[nearest[q]].to_frame().T, self.train_input.iloc[q].to_frame().T,self.feature_weights).iloc[0] < self.distance(self.train_input.iloc[nearest[q]].to_frame().T,
+                                                                         self.train_input.iloc[rep[nearest[q]]].to_frame().T ,self.feature_weights).iloc[0]):
+                        rep[nearest[q]] = q
+                elif (self.train_output.iloc[q] != self.train_output.iloc[nearest[q]]):
+                    rep[nearest[q]] = q
+
+            difference_s = set()
+            for p in S:
+                if rep[p]:
+                    difference_s.add(rep[p])
+            #difference_s = {rep[p] for p in S if rep[p] is not None}
+        reduced_X = self.train_input.loc[list(S)].reset_index(drop=True)
+        reduced_Y = self.train_output.loc[list(S)].reset_index(drop=True)
+        print(f"Final reduced dataset size: {len(reduced_X)} instances.")
+        return reduced_X,reduced_Y
+
+
+
+
 
 
 
@@ -175,6 +228,7 @@ class KNN:
     def fit(self, train_input, train_output):
         self.train_input = train_input
         self.train_output = train_output
+
 
         if self.weighting_strategy == WeigthingStrategies.FILTER:
             weights = mutual_info_classif(train_input, train_output)
@@ -187,7 +241,11 @@ class KNN:
             self.feature_weights = np.ones((train_input.shape[1],))
 
         if self.reduction_method == ReductionMethod.CONDENSATION:
-            pass
+
+            self.train_input, self.train_output = self.fcnn1()
+
+
+
         elif self.reduction_method == ReductionMethod.EDITION:
             self.train_input, self.train_output = self.RENN_reduction()
 
@@ -203,10 +261,13 @@ class KNN:
             distances = self.distance(x, self.train_input, self.feature_weights)
             distances = distances.sort_values()
 
+
             # select the closest neighbour(s)
             neighbours = distances.iloc[:self.k]
 
+
             # get the outputs of the nearest neighbours
+
             outputs = self.train_output.iloc[list(neighbours.keys())]
 
             # apply voting schemes
