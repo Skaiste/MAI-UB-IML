@@ -68,6 +68,9 @@ def sort_and_prepare_results(results):
             row[(f'Pred. Time', f'K{k}')] = knn_results['k'].get(k, {}).get('pred_time_mean', np.nan)
             score.append(row[(f'Accuracy', f'K{k}')] / row[(f'Pred. Time', f'K{k}')] / 100)
 
+        # TODO: add storage attribute, if it is not in the knn_results -> storage is 100 
+        #       otherwise use storage from knn_results['storage']
+
         row[('Score','')] = max(score)
         knn_data.append(row)
 
@@ -85,15 +88,12 @@ def sort_and_prepare_results(results):
             'Accuracy': svm_results.get('accuracy_mean', np.nan),
             'Prediction Time': svm_results.get('pred_time_mean', np.nan)
         })
+        # TODO: add storage attribute, if it is not in the svm_results -> storage is 100 
+        #       otherwise use storage from svm_results['storage']
 
     # Create SVM DataFrame and sort by accuracy mean
     svm_df = pd.DataFrame(svm_data).sort_values(by='Accuracy', ascending=False)
 
-    # Display both tables
-    # print("KNN Sorted Results")
-    # print(knn_df.to_string(index=False))
-    # print("\nSVM Sorted Results")
-    # print(svm_df.to_string(index=False))
     return knn_df, svm_df
 
 
@@ -135,10 +135,13 @@ def main():
     calculate_averages(results)
 
     knn, svm = sort_and_prepare_results(results)
-    print(dataframe_to_markdown(knn))
 
-    # breakpoint()
-    # i=0
+    # TODO: compare every different pair of hyperparameter set using t-test
+    #       to get the best model
+
+    print(dataframe_to_markdown(knn))
+    print(dataframe_to_markdown(svm))
+
 
 if __name__ == "__main__":
     main()

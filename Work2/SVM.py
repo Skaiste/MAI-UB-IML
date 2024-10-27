@@ -3,7 +3,7 @@ from sklearn import svm
 from enum import Enum
 from sklearn.preprocessing import MultiLabelBinarizer
 
-# Classifyer Kernel Types https://scikit-learn.org/stable/auto_examples/svm/plot_svm_kernels.html#sphx-glr-auto-examples-svm-plot-svm-kernels-py
+# Classifier Kernel Types https://scikit-learn.org/stable/auto_examples/svm/plot_svm_kernels.html#sphx-glr-auto-examples-svm-plot-svm-kernels-py
 class KernelType(Enum):
     RBF = 'rbf'                 # radial basis function
     POLYNOMIAL = 'polynomial'
