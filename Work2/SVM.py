@@ -19,8 +19,15 @@ class SVM:
             raise Exception("Unknown classifier specified")
 
     def fit(self, training_input, training_output):
+        self.train_input = training_input
+        self.train_output = training_output
+
+        # apply instance reduction
+        # self.train_input = ...
+        # self.train_output = ...
+
         # train the classifiers on the data
-        self.classifier.fit(training_input, training_output)
+        self.classifier.fit(self.train_input, self.train_output)
 
     def predict(self, testing_input):
         # X = np.array(testing_input.values.tolist())
