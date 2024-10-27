@@ -126,6 +126,50 @@ class KNN:
         reduced_y = train_output.loc[retain_indices]
 
         return reduced_X, reduced_y
+    
+    
+
+    def RENN_reduction(self, max_iterations=100):
+        retain_indices = self.train_input.index.tolist()
+        iteration = 0
+        stable = False
+
+        while not stable and iteration < max_iterations:
+            stable = True
+            indices_to_remove = []
+
+            for idx in retain_indices:
+                temp_X = self.train_input.loc[retain_indices].drop(index=idx)
+                temp_y = self.train_output.loc[retain_indices].drop(index=idx)
+
+                # calculate distance to each point in the training input set
+                weights = np.ones((self.train_input.shape[1],))  # using equal weights to reduce noise when selecting weights after reduction
+                distances = self.distance(self.train_input.loc[idx], temp_X, weights)
+                distances = distances.sort_values()
+
+                # get output using the k nearest neighbors
+                neighbours = distances.iloc[:self.k]
+                valid_keys = [i for i in neighbours.keys() if i in temp_y.index]  # Ensure valid keys
+                outputs = temp_y.loc[valid_keys]  # Use .loc with valid keys
+                output = self.voting_scheme(outputs, distances)
+
+                # check if the instance is misclassified
+                if output != self.train_output.loc[idx]:
+                    indices_to_remove.append(idx)
+                    stable = False
+
+            # remove misclassified instances for this iteration
+            retain_indices = [i for i in retain_indices if i not in indices_to_remove]
+            iteration += 1
+
+            # reduce dataset after all iterations 
+            reduced_X = self.train_input.loc[retain_indices].reset_index(drop=True)
+            reduced_y = self.train_output.loc[retain_indices].reset_index(drop=True)
+            print(f"Final reduced dataset size: {len(reduced_X)} instances.")
+
+            return reduced_X, reduced_y
+
+
 
     
     def fit(self, train_input, train_output):
@@ -145,7 +189,8 @@ class KNN:
         if self.reduction_method == ReductionMethod.CONDENSATION:
             pass
         elif self.reduction_method == ReductionMethod.EDITION:
-            pass
+            self.train_input, self.train_output = self.RENN_reduction()
+
         elif self.reduction_method == ReductionMethod.HYBRID:
             self.train_input, self.train_output = self.DROP3_reduction(self.train_input, self.train_output)
 

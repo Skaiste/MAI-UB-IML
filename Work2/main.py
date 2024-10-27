@@ -5,7 +5,7 @@ import time
 from enum import Enum
 
 from data_parser import get_data
-from KNN import KNN, DistanceType, VotingSchemas, WeigthingStrategies, ReductionMethod
+from kNN import KNN, DistanceType, VotingSchemas, WeigthingStrategies, ReductionMethod
 from SVM import SVM, KernelType
 
 
@@ -233,6 +233,7 @@ def main():
         run_knn(train_input, train_output, test_input, test_output, args)
     else: #SVM
         run_svm(train_input, train_output, test_input, test_output, args)
+
 
 
 if __name__ == "__main__":
