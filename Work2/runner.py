@@ -2,7 +2,7 @@ import argparse
 import pathlib
 
 from main import run_knn, run_svm
-from KNN import DistanceType, VotingSchemas, WeigthingStrategies, ReductionMethod
+from kNN import DistanceType, VotingSchemas, WeigthingStrategies, ReductionMethod
 from SVM import KernelType
 from data_parser import get_data
 
@@ -72,6 +72,7 @@ def main():
     args.instance_reduction = ReductionMethod.NO_REDUCTION
 
     # run KNN models
+    # itertools
     possible_k = [1, 3, 5, 7]
     for dt in DistanceType:
         args.distance_type = dt

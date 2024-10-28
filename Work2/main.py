@@ -2,7 +2,9 @@ import argparse
 import pathlib
 import json
 import time
+import numpy as np
 from enum import Enum
+
 
 from data_parser import get_data
 from kNN import KNN, DistanceType, VotingSchemas, WeigthingStrategies, ReductionMethod
@@ -46,7 +48,15 @@ def run_knn(train_input, train_output, test_input, test_output, args, skip_if_ex
 
     for fold in range(len(train_input)):
         knn = KNN(k=args.k, dm=args.distance_type, vs=args.voting_schema, ws=args.weighting_strategy, rm=args.instance_reduction, r=args.minkowski_r)
-        knn.fit(train_input[fold], train_output[fold])
+
+        # load cached weights
+        wcdir = args.cache_directory / "weighted"
+        weighted_fn = wcdir / f"fold.{fold}.weights.npy"
+        cached_weights = None
+        if not args.disable_cache and weighted_fn.is_file():
+            cached_weights = np.load(weighted_fn)
+
+        knn.fit(train_input[fold], train_output[fold], cached_weights)
 
         start_time = time.time()
         predictions = knn.predict(test_input[fold])
@@ -63,6 +73,12 @@ def run_knn(train_input, train_output, test_input, test_output, args, skip_if_ex
         result['folds'][fold]['incorrect'] = int(result_counts[False] if False in result_counts else 0)
         result['folds'][fold]['predictions'] = list([s for s in predictions])
         result['folds'][fold]['pred_time'] = end_time - start_time
+
+        # cache weighted input set
+        if not args.disable_cache:
+            wcdir.mkdir(parents=True, exist_ok=True)
+            np.save(weighted_fn, knn.feature_weights)
+
 
     with open(results_path, "w") as f:
         json.dump(result, f, indent=4)
@@ -99,6 +115,7 @@ def run_svm(train_input, train_output, test_input, test_output, args, skip_if_ex
         result['folds'][fold]['incorrect'] = int(result_counts[False] if False in result_counts else 0)
         result['folds'][fold]['predictions'] = list([s for s in predictions])
         result['folds'][fold]['pred_time'] = end_time - start_time
+
 
     with open(results_path, "w") as f:
         json.dump(result, f, indent=4)

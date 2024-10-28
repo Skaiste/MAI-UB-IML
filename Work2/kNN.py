@@ -219,32 +219,26 @@ class KNN:
         return reduced_X,reduced_Y
 
 
-
-
-
-
-
     
-    def fit(self, train_input, train_output):
+    def fit(self, train_input, train_output, cached_weights=None):
         self.train_input = train_input
         self.train_output = train_output
 
-
-        if self.weighting_strategy == WeigthingStrategies.FILTER:
-            weights = mutual_info_classif(train_input, train_output)
-            self.feature_weights = weights / np.sum(weights)
-        elif self.weighting_strategy == WeigthingStrategies.WRAPPER:
-            relieff = ReliefF(n_features=train_input.shape[1])
-            relieff.fit(train_input.values, train_output.values)
-            self.feature_weights = relieff.w_ 
+        if cached_weights is None:
+            if self.weighting_strategy == WeigthingStrategies.FILTER:
+                weights = mutual_info_classif(train_input, train_output)
+                self.feature_weights = weights / np.sum(weights)
+            elif self.weighting_strategy == WeigthingStrategies.WRAPPER:
+                relieff = ReliefF(n_features=train_input.shape[1]//2)
+                relieff.fit(train_input.values, train_output.values)
+                self.feature_weights = relieff.w_ 
+            else:
+                self.feature_weights = np.ones((train_input.shape[1],))
         else:
-            self.feature_weights = np.ones((train_input.shape[1],))
+            self.feature_weights = cached_weights
 
         if self.reduction_method == ReductionMethod.CONDENSATION:
-
             self.train_input, self.train_output = self.fcnn1()
-
-
 
         elif self.reduction_method == ReductionMethod.EDITION:
             self.train_input, self.train_output = self.RENN_reduction()
