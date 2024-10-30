@@ -35,8 +35,7 @@ class Normalization:
             else:
                 #Edit by Tatevik
                 if name.lower() != "class":
-                    column_reshaped = df[name].values.reshape(-1, 1)
-                    columns = [f"{name}_{a}" for a in self.nom_vals[name]]
+                    column_reshaped = df[name].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x).values.reshape(-1, 1)
                     if train:
                         if name not in self.encoders:
                             self.encoders[name] = OneHotEncoder(handle_unknown='ignore', sparse_output=False, categories=[self.nom_vals[name]])

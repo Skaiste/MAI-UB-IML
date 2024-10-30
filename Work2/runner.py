@@ -83,7 +83,7 @@ def main():
                 for k in possible_k:
                     args.k = k
                     if dt == DistanceType.MINKOWSKI:
-                        for r in [1, 2]:
+                        for r in [3, 4]:
                             args.minkowski_r = r
                             print(f"Running KNN with: k = {k}, distance = {dt.value} where r = {r}, voting = {vs.value}, weights = {ws.value}")
                             run_knn(train_input, train_output, test_input, test_output, args, skip_if_exists=True)

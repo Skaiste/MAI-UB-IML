@@ -68,7 +68,7 @@ def run_knn(train_input, train_output, test_input, test_output, args, skip_if_ex
         print(f"Fold {fold}: Accuracy: {accuracy:.2f}%")
 
         result['folds'][fold]['accuracy'] = accuracy
-        result['folds'][fold]['storage'] = knn.train_input.shape[0]
+        result['folds'][fold]['storage'] = knn.train_input.shape[0] / train_input[fold].shape[0] * 100
         result['folds'][fold]['correct'] = int(result_counts[True] if True in result_counts else 0)
         result['folds'][fold]['incorrect'] = int(result_counts[False] if False in result_counts else 0)
         result['folds'][fold]['predictions'] = list([s for s in predictions])
@@ -110,7 +110,7 @@ def run_svm(train_input, train_output, test_input, test_output, args, skip_if_ex
         print(f"Fold {fold}: Accuracy: {accuracy:.2f}%")
 
         result['folds'][fold]['accuracy'] = accuracy
-        result['folds'][fold]['storage'] = svm.train_input.shape[0]
+        result['folds'][fold]['storage'] = svm.train_input.shape[0] / train_input[fold].shape[0] * 100
         result['folds'][fold]['correct'] = int(result_counts[True] if True in result_counts else 0)
         result['folds'][fold]['incorrect'] = int(result_counts[False] if False in result_counts else 0)
         result['folds'][fold]['predictions'] = list([s for s in predictions])

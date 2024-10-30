@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 from enum import Enum
 from sklearn.feature_selection import mutual_info_classif
-from sklearn_relief import ReliefF
+from sklearn_relief import Relief
+from sklearn.preprocessing import LabelEncoder
 
 
 # Skaiste
@@ -32,6 +33,8 @@ def majority_class_vs(outputs, _):
 def innverse_distance_weighted_vs(outputs, distances):
     votes = {}
     for i in range(len(outputs)):
+        if distances[i] == 0:
+            continue
         vote = 1/distances[i]
         label = outputs.iloc[i]
         if label not in votes:
@@ -229,9 +232,13 @@ class KNN:
                 weights = mutual_info_classif(train_input, train_output)
                 self.feature_weights = weights / np.sum(weights)
             elif self.weighting_strategy == WeigthingStrategies.WRAPPER:
-                relieff = ReliefF(n_features=train_input.shape[1]//2)
-                relieff.fit(train_input.values, train_output.values)
-                self.feature_weights = relieff.w_ 
+                relieff = Relief(n_features=train_input.shape[1]//2)
+                label_encoder = LabelEncoder()
+                y_encoded = label_encoder.fit_transform(train_output)
+                relieff.fit(train_input.values, y_encoded)
+                self.feature_weights = np.nan_to_num(relieff.w_, nan=0.0)
+                if not np.any(self.feature_weights): # if all weights are set to 0s, set them to ones
+                    self.feature_weights = np.ones((train_input.shape[1],))
             else:
                 self.feature_weights = np.ones((train_input.shape[1],))
         else:
@@ -255,13 +262,10 @@ class KNN:
             distances = self.distance(x, self.train_input, self.feature_weights)
             distances = distances.sort_values()
 
-
             # select the closest neighbour(s)
             neighbours = distances.iloc[:self.k]
 
-
             # get the outputs of the nearest neighbours
-
             outputs = self.train_output.iloc[list(neighbours.keys())]
 
             # apply voting schemes
