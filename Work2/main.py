@@ -51,7 +51,7 @@ def run_knn(train_input, train_output, test_input, test_output, args, skip_if_ex
 
         # load cached weights
         wcdir = args.cache_directory / "weighted"
-        weighted_fn = wcdir / f"fold.{fold}.weights.npy"
+        weighted_fn = wcdir / f"fold.{fold}.{args.weighting_strategy.value}.weights.npy"
         cached_weights = None
         if not args.disable_cache and weighted_fn.is_file():
             cached_weights = np.load(weighted_fn)
