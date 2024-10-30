@@ -3,16 +3,22 @@ import json
 import argparse
 import numpy as np
 import pandas as pd
-
+from scipy.stats import friedmanchisquare, rankdata
+import scikit_posthocs as sp
+import matplotlib.pyplot as plt
+from scipy import stats
+from scipy.stats import studentized_range
 
 curr_dir = pathlib.Path(__file__).parent
+
 
 def load_results(res_dir):
     if not res_dir.is_dir():
         raise Exception(f"Result directory {res_dir} does not exist")
-    
-    results = {'KNN':{}, 'SVM':{}}
+
+    results = {'KNN': {}, 'SVM': {}}
     for fn in res_dir.iterdir():
+
         with open(fn, 'r') as f:
             data = json.load(f)
         if data['model'] == 'KNN':
@@ -26,73 +32,233 @@ def load_results(res_dir):
                     'weighting': data['weighting'],
                     'k': {}
                 }
+
             results['KNN'][name]['k'][k] = {
-                'accuracy': {f:data['folds'][f]['accuracy'] for f in data['folds']},
-                'correct': {f:data['folds'][f]['correct'] for f in data['folds']},
-                'incorrect': {f:data['folds'][f]['incorrect'] for f in data['folds']},
-                'pred_time': {f:data['folds'][f]['pred_time'] for f in data['folds']}
+                'accuracy': {f: data['folds'][f]['accuracy'] for f in data['folds']},
+                'correct': {f: data['folds'][f]['correct'] for f in data['folds']},
+                'incorrect': {f: data['folds'][f]['incorrect'] for f in data['folds']},
+                'pred_time': {f: data['folds'][f]['pred_time'] for f in data['folds']},
+                'storage': {f: data['folds'][f].get('storage', {}) for f in data['folds']}
             }
         else:
             results['SVM'][data['kernel']] = {
-                'accuracy': {f:data['folds'][f]['accuracy'] for f in data['folds']},
-                'correct': {f:data['folds'][f]['correct'] for f in data['folds']},
-                'incorrect': {f:data['folds'][f]['incorrect'] for f in data['folds']},
-                'pred_time': {f:data['folds'][f]['pred_time'] for f in data['folds']}
+                'accuracy': {f: data['folds'][f]['accuracy'] for f in data['folds']},
+                'correct': {f: data['folds'][f]['correct'] for f in data['folds']},
+                'incorrect': {f: data['folds'][f]['incorrect'] for f in data['folds']},
+                'pred_time': {f: data['folds'][f]['pred_time'] for f in data['folds']},
+                'storage': {f: data['folds'][f].get('storage', {}) for f in data['folds']}
             }
+
     return results
 
 
 def calculate_averages(results):
     for alg in results['KNN']:
         for k in results['KNN'][alg]['k']:
-            results['KNN'][alg]['k'][k]['accuracy_mean'] = np.mean(list(results['KNN'][alg]['k'][k]['accuracy'].values()))
-            results['KNN'][alg]['k'][k]['pred_time_mean'] = np.mean(list(results['KNN'][alg]['k'][k]['pred_time'].values()))
+            results['KNN'][alg]['k'][k]['accuracy_mean'] = np.mean(
+                list(results['KNN'][alg]['k'][k]['accuracy'].values()))
+            results['KNN'][alg]['k'][k]['pred_time_mean'] = np.mean(
+                list(results['KNN'][alg]['k'][k]['pred_time'].values()))
+            if any(value == {} for value in results['KNN'][alg]['k'][k]['storage'].values()):
+                results['KNN'][alg]['k'][k]['storage_mean'] = 100
+
+            else:
+                results['KNN'][alg]['k'][k]['storage_mean'] = np.mean(
+                    list(results['KNN'][alg]['k'][k]['storage'].values()))
 
     for alg in results['SVM']:
         results['SVM'][alg]['accuracy_mean'] = np.mean(list(results['SVM'][alg]['accuracy'].values()))
         results['SVM'][alg]['pred_time_mean'] = np.mean(list(results['SVM'][alg]['pred_time'].values()))
+        if any(value == {} for value in results['SVM'][alg]["storage"].values()):
+            results['SVM'][alg]['storage_time_mean'] = 100
+        else:
+            results['SVM'][alg]['storage_time_mean'] = np.mean(list(results['SVM'][alg]['storage'].values()))
 
 
-def sort_and_prepare_results(results):
+def plot_cd_bars(model_names, avg_ranks, cd):
+    sorted = np.argsort(avg_ranks)
+    sorted_names = [model_names[i] for i in sorted]
+    sorted_ranks = [avg_ranks[i] for i in sorted]
+
+    cd_half = cd / 2
+    plt.figure(figsize=(10, 6))
+
+    for i, (name, rank) in enumerate(zip(sorted_names, sorted_ranks)):
+        plt.errorbar(rank, i, xerr=cd_half, fmt='o', color='red', capsize=5, label='CD/2' if i == 0 else "")
+        plt.text(rank, i, f"{rank:.2f}", va='center', ha='right', color='black', fontsize=9)  # Annotate rank value
+
+    mean_rank = np.mean(sorted_ranks)
+    plt.axvline(mean_rank, color='black', linestyle='--', label='Mean Rank')
+
+    plt.yticks(range(len(sorted_names)), sorted_names, fontsize=4)
+    plt.xlabel("Rank")
+    plt.title("Analysis of the results ")
+    plt.legend(loc="upper right")
+    plt.gca().invert_yaxis()  # Highest-ranked model at the top
+    plt.show()
+
+
+def sort_and_prepare_results(results, metric, confidence):
     # Prepare KNN table
     knn_data = []
+    print(" KNN ")
     for name, knn_results in results['KNN'].items():
-        row = {
-            ('Distance', ''): knn_results['distance'],
-            ('Voting', ''): knn_results['voting'],
-            ('Weighting', ''): knn_results['weighting']
-        }
-        score = []
-        for k in [1, 3, 5, 7]:
-            row[(f'Accuracy', f'K{k}')] = knn_results['k'].get(k, {}).get('accuracy_mean', np.nan)
-            row[(f'Pred. Time', f'K{k}')] = knn_results['k'].get(k, {}).get('pred_time_mean', np.nan)
-            score.append(row[(f'Accuracy', f'K{k}')] / row[(f'Pred. Time', f'K{k}')] / 100)
 
-        # TODO: add storage attribute, if it is not in the knn_results -> storage is 100 
-        #       otherwise use storage from knn_results['storage']
+        for fold in range(10):
+            # score = []
+            row_ = {
+                'Distance': knn_results['distance'],
+                'Voting': knn_results['voting'],
+                'Weighting': knn_results['weighting']
+            }
 
-        row[('Score','')] = max(score)
-        knn_data.append(row)
+            for k in [1, 3, 5, 7]:
 
-    # Create KNN DataFrame and sort by K1 accuracy mean
+                row = row_.copy()
+                row['Accuracy'] = knn_results['k'].get(k, np.nan).get('accuracy', np.nan).get(str(fold), np.nan)
+                row['Pred. Time'] = knn_results['k'].get(k, np.nan).get('pred_time', np.nan).get(str(fold), np.nan)
+                row['Fold'] = fold
+                if knn_results['k'].get(k, np.nan).get('storage', {}).get(str(fold), {}) == {}:
+
+                    row['Storage'] = 100
+                else:
+                    row['Storage'] = knn_results['k'].get(k, np.nan).get('storage', {}).get(str(fold), {})
+
+                row['K'] = k
+
+                knn_data.append(row)
+
     knn_df = pd.DataFrame(knn_data)
-    knn_df.columns = pd.MultiIndex.from_tuples(knn_df.columns)
-    knn_df = knn_df.sort_values(by=('Score', ''), ascending=False).drop(columns=[('Score','')])
+    if metric == "Pred. Time":
+        ascend = True
+    else:
+        ascend = False
 
-    
+    knn_df_grouped = knn_df.groupby(['Distance', 'Voting', 'Weighting', 'K']).agg({
+        'Accuracy': 'mean',
+        'Pred. Time': 'mean',
+        'Storage': 'mean'
+    }).reset_index().sort_values(
+        by= metric, ascending=ascend)
+
+    top_knn = knn_df_grouped.iloc[:5]
+
+    print("the best models \n", top_knn)
+
+    filtered_knn_df = pd.DataFrame()
+    for _, row in top_knn.iterrows():
+        match = knn_df[
+            (knn_df['Distance'] == row['Distance']) &
+            (knn_df['Voting'] == row['Voting']) &
+            (knn_df['Weighting'] == row['Weighting']) &
+            (knn_df['K'] == row['K'])
+            ]
+        filtered_knn_df = pd.concat([filtered_knn_df, match])
+    filtered_knn_df.reset_index(drop=True, inplace=True)
+
+    models = []
+    model_names = []
+    model = []
+
+    for i in range(1, len(filtered_knn_df) + 1):
+
+        if i % 10 == 0:
+            models.append(model)
+            model.append(filtered_knn_df.iloc[i - 1][metric])
+            model_names.append(str(filtered_knn_df["Distance"].iloc[i - 1]) + " " + str(
+                filtered_knn_df["Voting"].iloc[i - 1]) + " " + str(
+                filtered_knn_df["Weighting"].iloc[i - 1]) + " " + str(filtered_knn_df["K"].iloc[i - 1]))
+            model = []
+
+        else:
+            model.append(filtered_knn_df.iloc[i - 1][metric])
+
+    if all(i == models[0] for i in models):
+        print("All of the elements of the " + metric + " are the same, so we can't perform the test")
+    else:
+        res = friedmanchisquare(*models)
+        pvalue = res.pvalue
+        ranked_models = [rankdata(model,method = "average") for model in models]
+
+        average_ranks = [sum(ranks) / len(ranks) for ranks in ranked_models]
+
+        if pvalue > (1 - float(confidence)):
+            print(" The values are not significantly different")
+        else:
+            print(" The values are significantly different, H₀ is rejected, let's apply Nemenayi Post-Doc test")
+            models = np.array(models).T
+            nemenyi =sp.posthoc_nemenyi_friedman(np.array(models))
+            print(nemenyi)
+            #plot_cd_bars(model_names, average_ranks,studentized_range.ppf(float(confidence), 5, 1000000) * ((5) * (5 + 1) / 60) ** (1 / 2))
+
+            models = models.T
+            if metric == "Pred. Time":
+
+                models = [np.mean(model) for model in models]
+            else:
+                models = [-1*np.mean(model) for model in models]
+            ranked_models = rankdata(models)
+
+
+
+
+            # Create a figure and an axis
+            plt.figure(figsize=(10, 2), dpi=100)
+            plt.title('Critical difference diagram of average score ranks')
+            print(ranked_models)
+            sp.critical_difference_diagram(
+                ranked_models,
+                nemenyi,
+
+            )
+            plt.show()
+
+
+
     # Prepare SVM table
+    print("SVM")
     svm_data = []
     for kernel, svm_results in results['SVM'].items():
-        svm_data.append({
-            'Kernel': kernel,
-            'Accuracy': svm_results.get('accuracy_mean', np.nan),
-            'Prediction Time': svm_results.get('pred_time_mean', np.nan)
-        })
-        # TODO: add storage attribute, if it is not in the svm_results -> storage is 100 
-        #       otherwise use storage from svm_results['storage']
-
+        for fold in range(10):
+            if svm_results.get('Storage', {}) == {}:
+                storage = 100
+            else:
+                storage = svm_results.get('Storage', {}).get(str(fold), {})
+            svm_data.append({
+                'Kernel': kernel,
+                'Accuracy': svm_results.get('accuracy', np.nan).get(str(fold), np.nan),
+                'Pred. Time': svm_results.get('pred_time', {}).get(str(fold), np.nan),
+                'Fold': fold,
+                'Storage': storage
+            })
     # Create SVM DataFrame and sort by accuracy mean
-    svm_df = pd.DataFrame(svm_data).sort_values(by='Accuracy', ascending=False)
+    svm_df = pd.DataFrame(svm_data)  # .sort_values(by='Accuracy', ascending=False)
+    model_names = []
+    model = []
+    models = []
+    for i in range(1, len(svm_df) + 1):
+
+        if i % 10 == 0:
+            models.append(model)
+            model.append(svm_df.iloc[i - 1][metric])
+            model_names.append(str(svm_df["Kernel"].iloc[i - 1]))
+            model = []
+        else:
+            model.append(svm_df.iloc[i - 1][metric])
+    if all(i == models[0] for i in models):
+        print("All of the elements of the " + metric + " are the same, so we can't perform the test")
+    t_stat, p_value = stats.ttest_rel(models[0], models[1])
+    if p_value > (1 - float(confidence)):
+        print(" The values are not significantly different")
+    else:
+        print(" The values are significantly different")
+    svm_df_grouped = svm_df.groupby(['Kernel']).agg({
+        'Accuracy': 'mean',
+        'Pred. Time': 'mean',
+        'Storage': 'mean'
+    }).reset_index().sort_values(
+        by='Accuracy', ascending=False)
+    print(svm_df_grouped)
 
     return knn_df, svm_df
 
@@ -118,7 +284,7 @@ def main():
     parser.add_argument(
         "-d", "--dataset",
         type=str,
-        default="sick",
+        default="mushroom",
         help="Name of the dataset to process, adult on default."
     )
     parser.add_argument(
@@ -127,20 +293,28 @@ def main():
         default=curr_dir / "results",
         help="Path to the results directory."
     )
+    parser.add_argument(
+        "-m", "--metric",
+        choices=['Pred. Time', 'Accuracy', 'Storage'],
+        default='Accuracy'
+
+    )
+    parser.add_argument(
+        "-c", "--confidence",
+        default=0.95
+
+    )
     args = parser.parse_args()
 
     args.result_directory = args.result_directory / args.dataset
 
     results = load_results(args.result_directory)
-    calculate_averages(results)
+    # calculate_averages(results)
 
-    knn, svm = sort_and_prepare_results(results)
+    knn, svm = sort_and_prepare_results(results, args.metric, args.confidence)
 
-    # TODO: compare every different pair of hyperparameter set using t-test
-    #       to get the best model
-
-    print(dataframe_to_markdown(knn))
-    print(dataframe_to_markdown(svm))
+    # print(dataframe_to_markdown(knn))
+    # print(dataframe_to_markdown(svm))
 
 
 if __name__ == "__main__":
