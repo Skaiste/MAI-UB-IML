@@ -50,11 +50,11 @@ def run_knn(train_input, train_output, test_input, test_output, args, skip_if_ex
         knn = KNN(k=args.k, dm=args.distance_type, vs=args.voting_schema, ws=args.weighting_strategy, rm=args.instance_reduction, r=args.minkowski_r)
 
         # load cached weights
-        wcdir = args.cache_directory / "weighted"
-        weighted_fn = wcdir / f"fold.{fold}.{args.weighting_strategy.value}.weights.npy"
+        # wcdir = args.cache_directory / "weighted"
+        # weighted_fn = wcdir / f"fold.{fold}.{args.weighting_strategy.value}.weights.npy"
         cached_weights = None
-        if not args.disable_cache and weighted_fn.is_file():
-            cached_weights = np.load(weighted_fn)
+        # if not args.disable_cache and weighted_fn.is_file():
+        #     cached_weights = np.load(weighted_fn)
 
         knn.fit(train_input[fold], train_output[fold], cached_weights)
 
@@ -75,9 +75,9 @@ def run_knn(train_input, train_output, test_input, test_output, args, skip_if_ex
         result['folds'][fold]['pred_time'] = end_time - start_time
 
         # cache weighted input set
-        if not args.disable_cache:
-            wcdir.mkdir(parents=True, exist_ok=True)
-            np.save(weighted_fn, knn.feature_weights)
+        # if not args.disable_cache:
+        #     wcdir.mkdir(parents=True, exist_ok=True)
+        #     np.save(weighted_fn, knn.feature_weights)
 
 
     with open(results_path, "w") as f:
@@ -85,7 +85,10 @@ def run_knn(train_input, train_output, test_input, test_output, args, skip_if_ex
 
 
 def run_svm(train_input, train_output, test_input, test_output, args, skip_if_exists=False):
-    results_fn = f"SVM_{args.kernel.value}.json"
+    results_fn = f"SVM_{args.kernel.value}"
+    if args.instance_reduction != ReductionMethod.NO_REDUCTION:
+        results_fn += f"_{args.instance_reduction.value}"
+    results_fn += ".json"
     results_path = args.result_directory / results_fn
     if skip_if_exists and results_path.is_file():
         return
@@ -95,6 +98,7 @@ def run_svm(train_input, train_output, test_input, test_output, args, skip_if_ex
         'folds': {i:{} for i in range(len(train_input))},
         'dataset': args.dataset,
         'kernel': args.kernel.value,
+        'reduction': args.instance_reduction.value
     }
     for fold in range(len(train_input)):
         svm = SVM(args.kernel)
@@ -133,7 +137,7 @@ def main():
         "-d", "--dataset",
         type=str,
         default="sick",
-        help="Name of the dataset to process, adult on default."
+        help="Name of the dataset to process, sick on default."
     )
     parser.add_argument(
         "-p", "--path",
@@ -180,8 +184,8 @@ def main():
     parser.add_argument(
         "-R", "--minkowski-r",
         type=int,
-        default=1,
-        help="KNN: r value for minkowski algorithm, default: 1"
+        default=3,
+        help="KNN: r value for minkowski algorithm, default: 3"
     )
     parser.add_argument(
         "-w", "--weighting-strategy",
@@ -204,8 +208,8 @@ def main():
     parser.add_argument(
         "-K", "--kernel",
         choices=[k.value for k in KernelType],
-        default=KernelType.RBF.value,
-        help="SVM: Choose classifier kernel, RBF set on default"
+        default=KernelType.POLYNOMIAL.value,
+        help="SVM: Choose classifier kernel, polynomial set on default"
     )
     
     # Parse the command line arguments
@@ -216,7 +220,9 @@ def main():
     args.weighting_strategy = WeigthingStrategies(args.weighting_strategy.lower())
     args.kernel = KernelType(args.kernel.lower())
     args.instance_reduction = ReductionMethod(args.instance_reduction.lower())
-    
+
+    if args.instance_reduction != ReductionMethod.NO_REDUCTION:
+        args.result_directory = pathlib.Path(str(args.result_directory) + "_reduced")
     args.result_directory = args.result_directory / args.dataset
     args.result_directory.mkdir(parents=True, exist_ok=True)
 
