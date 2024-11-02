@@ -32,6 +32,8 @@ def load_results(res_dir):
                     'weighting': data['weighting'],
                     'k': {}
                 }
+                if data['distance'] == 'minkowski':
+                    results['KNN'][name]['distance'] = results['KNN'][name]['distance'] + "_" + str(data['minkowski_r'])
 
             results['KNN'][name]['k'][k] = {
                 'accuracy': {f: data['folds'][f]['accuracy'] for f in data['folds']},
