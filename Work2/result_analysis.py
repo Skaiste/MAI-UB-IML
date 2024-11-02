@@ -54,50 +54,6 @@ def load_results(res_dir):
     return results
 
 
-def calculate_averages(results):
-    for alg in results['KNN']:
-        for k in results['KNN'][alg]['k']:
-            results['KNN'][alg]['k'][k]['accuracy_mean'] = np.mean(
-                list(results['KNN'][alg]['k'][k]['accuracy'].values()))
-            results['KNN'][alg]['k'][k]['pred_time_mean'] = np.mean(
-                list(results['KNN'][alg]['k'][k]['pred_time'].values()))
-            if any(value == {} for value in results['KNN'][alg]['k'][k]['storage'].values()):
-                results['KNN'][alg]['k'][k]['storage_mean'] = 100
-
-            else:
-                results['KNN'][alg]['k'][k]['storage_mean'] = np.mean(
-                    list(results['KNN'][alg]['k'][k]['storage'].values()))
-
-    for alg in results['SVM']:
-        results['SVM'][alg]['accuracy_mean'] = np.mean(list(results['SVM'][alg]['accuracy'].values()))
-        results['SVM'][alg]['pred_time_mean'] = np.mean(list(results['SVM'][alg]['pred_time'].values()))
-        if any(value == {} for value in results['SVM'][alg]["storage"].values()):
-            results['SVM'][alg]['storage_time_mean'] = 100
-        else:
-            results['SVM'][alg]['storage_time_mean'] = np.mean(list(results['SVM'][alg]['storage'].values()))
-
-
-def plot_cd_bars(model_names, avg_ranks, cd):
-    sorted = np.argsort(avg_ranks)
-    sorted_names = [model_names[i] for i in sorted]
-    sorted_ranks = [avg_ranks[i] for i in sorted]
-
-    cd_half = cd / 2
-    plt.figure(figsize=(10, 6))
-
-    for i, (name, rank) in enumerate(zip(sorted_names, sorted_ranks)):
-        plt.errorbar(rank, i, xerr=cd_half, fmt='o', color='red', capsize=5, label='CD/2' if i == 0 else "")
-        plt.text(rank, i, f"{rank:.2f}", va='center', ha='right', color='black', fontsize=9)  # Annotate rank value
-
-    mean_rank = np.mean(sorted_ranks)
-    plt.axvline(mean_rank, color='black', linestyle='--', label='Mean Rank')
-
-    plt.yticks(range(len(sorted_names)), sorted_names, fontsize=4)
-    plt.xlabel("Rank")
-    plt.title("Analysis of the results ")
-    plt.legend(loc="upper right")
-    plt.gca().invert_yaxis()  # Highest-ranked model at the top
-    plt.show()
 
 
 def sort_and_prepare_results(results, metric, confidence):
@@ -107,7 +63,7 @@ def sort_and_prepare_results(results, metric, confidence):
     for name, knn_results in results['KNN'].items():
 
         for fold in range(10):
-            # score = []
+
             row_ = {
                 'Distance': knn_results['distance'],
                 'Voting': knn_results['voting'],
@@ -191,7 +147,6 @@ def sort_and_prepare_results(results, metric, confidence):
             models = np.array(models).T
             nemenyi =sp.posthoc_nemenyi_friedman(np.array(models))
             print(nemenyi)
-            #plot_cd_bars(model_names, average_ranks,studentized_range.ppf(float(confidence), 5, 1000000) * ((5) * (5 + 1) / 60) ** (1 / 2))
 
             models = models.T
             if metric == "Pred. Time":
@@ -234,7 +189,7 @@ def sort_and_prepare_results(results, metric, confidence):
                 'Storage': storage
             })
     # Create SVM DataFrame and sort by accuracy mean
-    svm_df = pd.DataFrame(svm_data)  # .sort_values(by='Accuracy', ascending=False)
+    svm_df = pd.DataFrame(svm_data)
     model_names = []
     model = []
     models = []
@@ -311,7 +266,7 @@ def main():
     args.result_directory = args.result_directory / args.dataset
 
     results = load_results(args.result_directory)
-    # calculate_averages(results)
+
 
     knn, svm = sort_and_prepare_results(results, args.metric, args.confidence)
 
