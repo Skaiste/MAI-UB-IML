@@ -41,6 +41,12 @@ def main():
         default=False,
         help="Disable saving to and loading normalised data from cache"
     )
+    parser.add_argument(
+        "-R", "--run-reduction",
+        action='store_true',
+        default=False,
+        help="Run selected algorithms with reduction"
+    )
     args = parser.parse_args()
     
     args.result_directory = args.result_directory / args.dataset
@@ -69,33 +75,63 @@ def main():
     train_input, train_output, test_input, test_output = get_data(data_fns, not args.disable_cache, args.cache_directory)
 
     args.minkowski_r = 1 # default value, need to set it even when minkowski isn't used for distance
-    args.instance_reduction = ReductionMethod.NO_REDUCTION
+    if not args.run_reduction:
+        args.instance_reduction = ReductionMethod.NO_REDUCTION
 
-    # run KNN models
-    # itertools
-    possible_k = [1, 3, 5, 7]
-    for dt in DistanceType:
-        args.distance_type = dt
-        for vs in VotingSchemas:
-            args.voting_schema = vs
-            for ws in WeigthingStrategies:
-                args.weighting_strategy = ws
-                for k in possible_k:
-                    args.k = k
-                    if dt == DistanceType.MINKOWSKI:
-                        for r in [3, 4]:
-                            args.minkowski_r = r
-                            print(f"Running KNN with: k = {k}, distance = {dt.value} where r = {r}, voting = {vs.value}, weights = {ws.value}")
+        # run KNN models
+        # itertools
+        possible_k = [1, 3, 5, 7]
+        for dt in DistanceType:
+            args.distance_type = dt
+            for vs in VotingSchemas:
+                args.voting_schema = vs
+                for ws in WeigthingStrategies:
+                    args.weighting_strategy = ws
+                    for k in possible_k:
+                        args.k = k
+                        if dt == DistanceType.MINKOWSKI:
+                            for r in [3, 4]:
+                                args.minkowski_r = r
+                                print(f"Running KNN with: k = {k}, distance = {dt.value} where r = {r}, voting = {vs.value}, weights = {ws.value}")
+                                run_knn(train_input, train_output, test_input, test_output, args, skip_if_exists=True)
+                        else:
+                            print(f"Running KNN with: k = {k}, distance = {dt.value}, voting = {vs.value}, weights = {ws.value}")
                             run_knn(train_input, train_output, test_input, test_output, args, skip_if_exists=True)
-                    else:
-                        print(f"Running KNN with: k = {k}, distance = {dt.value}, voting = {vs.value}, weights = {ws.value}")
-                        run_knn(train_input, train_output, test_input, test_output, args, skip_if_exists=True)
 
-    # run SVM models
-    for kt in KernelType:
-        args.kernel = kt
-        print(f"Running SVM with kernel = {kt.value}")
-        run_svm(train_input, train_output, test_input, test_output, args, skip_if_exists=True)
+        # run SVM models
+        for kt in KernelType:
+            args.kernel = kt
+            print(f"Running SVM with kernel = {kt.value}")
+            run_svm(train_input, train_output, test_input, test_output, args, skip_if_exists=True)
+
+    else:
+        args.result_directory = args.result_directory.parent.parent / "results_reduced" / args.result_directory.name
+        args.result_directory.mkdir(parents=True, exist_ok=True)
+
+        if args.dataset == "sick":
+            args.distance_type = DistanceType.MANHATTAN
+            args.voting_schema = VotingSchemas.MAJORITY_CLASS
+            args.weighting_strategy = WeigthingStrategies.EQUAL
+            args.k = 1
+        elif args.dataset == "mushroom":
+            args.distance_type = DistanceType.MANHATTAN
+            args.voting_schema = VotingSchemas.SHEPARDS_WORK
+            args.weighting_strategy = WeigthingStrategies.FILTER
+            args.k = 1
+        else:
+            raise Exception(f"Dataset {args.dataset} is not recognised. Try 'sick' or 'mushroom'")
+
+        for reduction in ReductionMethod:
+            args.instance_reduction = reduction
+            print(f"Running KNN {fn.stem} with reduction = {reduction.value}")
+            run_knn(train_input, train_output, test_input, test_output, args, skip_if_exists=True)
+
+        args.kernel = KernelType.POLYNOMIAL
+        for reduction in ReductionMethod:
+            args.instance_reduction = reduction
+            print(f"Running SVM with reduction = {reduction.value}")
+            run_svm(train_input, train_output, test_input, test_output, args, skip_if_exists=True)
+
 
 
 if __name__ == "__main__":
