@@ -3,7 +3,7 @@
     "folds": {
         "0": {
             "accuracy": 94.42970822281167,
-            "storage": 100.0,
+            "storage": 88.68924889543446,
             "correct": 356,
             "incorrect": 21,
             "predictions": [
@@ -385,11 +385,11 @@
                 "negative",
                 "negative"
             ],
-            "pred_time": 0.003559112548828125
+            "pred_time": 0.0051572322845458984
         },
         "1": {
             "accuracy": 94.16445623342176,
-            "storage": 100.0,
+            "storage": 87.71723122238586,
             "correct": 355,
             "incorrect": 22,
             "predictions": [
@@ -771,11 +771,11 @@
                 "negative",
                 "negative"
             ],
-            "pred_time": 0.0036029815673828125
+            "pred_time": 0.005143165588378906
         },
         "2": {
             "accuracy": 94.16445623342176,
-            "storage": 100.0,
+            "storage": 89.39617083946982,
             "correct": 355,
             "incorrect": 22,
             "predictions": [
@@ -1157,11 +1157,11 @@
                 "negative",
                 "negative"
             ],
-            "pred_time": 0.003534078598022461
+            "pred_time": 0.005316972732543945
         },
         "3": {
             "accuracy": 94.42970822281167,
-            "storage": 100.0,
+            "storage": 89.24889543446245,
             "correct": 356,
             "incorrect": 21,
             "predictions": [
@@ -1543,11 +1543,11 @@
                 "negative",
                 "negative"
             ],
-            "pred_time": 0.0036211013793945312
+            "pred_time": 0.005167961120605469
         },
         "4": {
             "accuracy": 94.42970822281167,
-            "storage": 100.0,
+            "storage": 90.04418262150222,
             "correct": 356,
             "incorrect": 21,
             "predictions": [
@@ -1929,11 +1929,11 @@
                 "negative",
                 "negative"
             ],
-            "pred_time": 0.0036101341247558594
+            "pred_time": 0.0050618648529052734
         },
         "5": {
             "accuracy": 94.14893617021278,
-            "storage": 100.0,
+            "storage": 89.25206124852768,
             "correct": 354,
             "incorrect": 22,
             "predictions": [
@@ -2314,11 +2314,11 @@
                 "negative",
                 "negative"
             ],
-            "pred_time": 0.0034780502319335938
+            "pred_time": 0.005038022994995117
         },
         "6": {
             "accuracy": 94.45910290237467,
-            "storage": 100.0,
+            "storage": 89.15414087827881,
             "correct": 358,
             "incorrect": 21,
             "predictions": [
@@ -2702,11 +2702,11 @@
                 "negative",
                 "negative"
             ],
-            "pred_time": 0.0035479068756103516
+            "pred_time": 0.0051839351654052734
         },
         "7": {
             "accuracy": 94.6949602122016,
-            "storage": 100.0,
+            "storage": 89.60235640648013,
             "correct": 357,
             "incorrect": 20,
             "predictions": [
@@ -3088,11 +3088,11 @@
                 "negative",
                 "negative"
             ],
-            "pred_time": 0.0034821033477783203
+            "pred_time": 0.005131721496582031
         },
         "8": {
             "accuracy": 94.70899470899471,
-            "storage": 100.0,
+            "storage": 89.01001767825575,
             "correct": 358,
             "incorrect": 20,
             "predictions": [
@@ -3475,11 +3475,11 @@
                 "negative",
                 "negative"
             ],
-            "pred_time": 0.0034558773040771484
+            "pred_time": 0.005059957504272461
         },
         "9": {
             "accuracy": 94.6949602122016,
-            "storage": 100.0,
+            "storage": 89.07216494845362,
             "correct": 357,
             "incorrect": 20,
             "predictions": [
@@ -3861,7 +3861,7 @@
                 "negative",
                 "negative"
             ],
-            "pred_time": 0.003531932830810547
+            "pred_time": 0.005151033401489258
         }
     },
     "dataset": "sick",

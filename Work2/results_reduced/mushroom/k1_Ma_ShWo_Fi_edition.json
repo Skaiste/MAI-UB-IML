@@ -823,7 +823,7 @@
                 "e",
                 "p"
             ],
-            "pred_time": 6.0273449420928955
+            "pred_time": 4.399415969848633
         },
         "1": {
             "accuracy": 100.0,
@@ -1644,7 +1644,7 @@
                 "p",
                 "p"
             ],
-            "pred_time": 6.346909999847412
+            "pred_time": 4.061538219451904
         },
         "2": {
             "accuracy": 100.0,
@@ -2465,7 +2465,7 @@
                 "e",
                 "e"
             ],
-            "pred_time": 5.69843316078186
+            "pred_time": 3.9808599948883057
         },
         "3": {
             "accuracy": 100.0,
@@ -3286,7 +3286,7 @@
                 "p",
                 "e"
             ],
-            "pred_time": 5.785271883010864
+            "pred_time": 3.97456693649292
         },
         "4": {
             "accuracy": 100.0,
@@ -4107,7 +4107,7 @@
                 "p",
                 "p"
             ],
-            "pred_time": 6.328057050704956
+            "pred_time": 3.970381021499634
         },
         "5": {
             "accuracy": 100.0,
@@ -4927,7 +4927,7 @@
                 "e",
                 "e"
             ],
-            "pred_time": 5.821808815002441
+            "pred_time": 4.044124126434326
         },
         "6": {
             "accuracy": 100.0,
@@ -5750,7 +5750,7 @@
                 "e",
                 "p"
             ],
-            "pred_time": 5.7645909786224365
+            "pred_time": 3.9629411697387695
         },
         "7": {
             "accuracy": 100.0,
@@ -6573,7 +6573,7 @@
                 "e",
                 "p"
             ],
-            "pred_time": 5.547120094299316
+            "pred_time": 3.9550440311431885
         },
         "8": {
             "accuracy": 100.0,
@@ -7393,7 +7393,7 @@
                 "p",
                 "p"
             ],
-            "pred_time": 6.362396001815796
+            "pred_time": 4.053215980529785
         },
         "9": {
             "accuracy": 100.0,
@@ -8214,12 +8214,12 @@
                 "e",
                 "e"
             ],
-            "pred_time": 5.552703857421875
+            "pred_time": 3.8561291694641113
         }
     },
     "dataset": "mushroom",
-    "distance": "euclidean",
-    "voting": "majority_class",
-    "weighting": "wrapper",
-    "reduction": "hybrid"
+    "distance": "manhattan",
+    "voting": "shepards_work",
+    "weighting": "filter",
+    "reduction": "edition"
 }
