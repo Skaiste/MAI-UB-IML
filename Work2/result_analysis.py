@@ -30,7 +30,8 @@ def load_results(res_dir):
                     'distance': data['distance'],
                     'voting': data['voting'],
                     'weighting': data['weighting'],
-                    'k': {}
+                    'k': {},
+                    'reduction': data['reduction']
                 }
                 if data['distance'] == 'minkowski':
                     results['KNN'][name]['distance'] = results['KNN'][name]['distance'] + "_" + str(data['minkowski_r'])
@@ -41,14 +42,18 @@ def load_results(res_dir):
                 'incorrect': {f: data['folds'][f]['incorrect'] for f in data['folds']},
                 'pred_time': {f: data['folds'][f]['pred_time'] for f in data['folds']},
                 'storage': {f: data['folds'][f].get('storage', {}) for f in data['folds']}
+
             }
+
         else:
+
             results['SVM'][data['kernel']] = {
                 'accuracy': {f: data['folds'][f]['accuracy'] for f in data['folds']},
                 'correct': {f: data['folds'][f]['correct'] for f in data['folds']},
                 'incorrect': {f: data['folds'][f]['incorrect'] for f in data['folds']},
                 'pred_time': {f: data['folds'][f]['pred_time'] for f in data['folds']},
                 'storage': {f: data['folds'][f].get('storage', {}) for f in data['folds']}
+
             }
 
     return results
@@ -67,7 +72,8 @@ def sort_and_prepare_results(results, metric, confidence):
             row_ = {
                 'Distance': knn_results['distance'],
                 'Voting': knn_results['voting'],
-                'Weighting': knn_results['weighting']
+                'Weighting': knn_results['weighting'],
+                'Reduction' : knn_results['reduction']
             }
 
             for k in [1, 3, 5, 7]:
@@ -92,7 +98,7 @@ def sort_and_prepare_results(results, metric, confidence):
     else:
         ascend = False
 
-    knn_df_grouped = knn_df.groupby(['Distance', 'Voting', 'Weighting', 'K']).agg({
+    knn_df_grouped = knn_df.groupby(['Distance', 'Voting', 'Weighting', 'K','Reduction']).agg({
         'Accuracy': 'mean',
         'Pred. Time': 'mean',
         'Storage': 'mean'
@@ -109,7 +115,8 @@ def sort_and_prepare_results(results, metric, confidence):
             (knn_df['Distance'] == row['Distance']) &
             (knn_df['Voting'] == row['Voting']) &
             (knn_df['Weighting'] == row['Weighting']) &
-            (knn_df['K'] == row['K'])
+            (knn_df['K'] == row['K']) &
+            (knn_df['Reduction'] == row['Reduction'])
             ]
         filtered_knn_df = pd.concat([filtered_knn_df, match])
     filtered_knn_df.reset_index(drop=True, inplace=True)
@@ -125,7 +132,7 @@ def sort_and_prepare_results(results, metric, confidence):
             model.append(filtered_knn_df.iloc[i - 1][metric])
             model_names.append(str(filtered_knn_df["Distance"].iloc[i - 1]) + " " + str(
                 filtered_knn_df["Voting"].iloc[i - 1]) + " " + str(
-                filtered_knn_df["Weighting"].iloc[i - 1]) + " " + str(filtered_knn_df["K"].iloc[i - 1]))
+                filtered_knn_df["Weighting"].iloc[i - 1]) + " " + str(filtered_knn_df["K"].iloc[i - 1])+" " + str(filtered_knn_df["Reduction"].iloc[i - 1]))
             model = []
 
         else:
@@ -143,7 +150,7 @@ def sort_and_prepare_results(results, metric, confidence):
         if pvalue > (1 - float(confidence)):
             print(" The values are not significantly different")
         else:
-            print(" The values are significantly different, H₀ is rejected, let's apply Nemenayi Post-Doc test")
+            print(" The values are significantly different, H₀ is rejected, let's apply Nemenyi Post-Doc test")
             models = np.array(models).T
             nemenyi =sp.posthoc_nemenyi_friedman(np.array(models))
             print(nemenyi)
@@ -187,6 +194,7 @@ def sort_and_prepare_results(results, metric, confidence):
                 'Pred. Time': svm_results.get('pred_time', {}).get(str(fold), np.nan),
                 'Fold': fold,
                 'Storage': storage
+
             })
     # Create SVM DataFrame and sort by accuracy mean
     svm_df = pd.DataFrame(svm_data)
@@ -204,17 +212,19 @@ def sort_and_prepare_results(results, metric, confidence):
             model.append(svm_df.iloc[i - 1][metric])
     if all(i == models[0] for i in models):
         print("All of the elements of the " + metric + " are the same, so we can't perform the test")
-    t_stat, p_value = stats.ttest_rel(models[0], models[1])
-    if p_value > (1 - float(confidence)):
-        print(" The values are not significantly different")
+
     else:
-        print(" The values are significantly different")
-    svm_df_grouped = svm_df.groupby(['Kernel']).agg({
+        t_stat, p_value = stats.ttest_rel(models[0], models[1])
+        if p_value > (1 - float(confidence)):
+            print(" The values are not significantly different")
+        else:
+            print(" The values are significantly different")
+    svm_df_grouped = svm_df.groupby(['Kernel','Reduction']).agg({
         'Accuracy': 'mean',
         'Pred. Time': 'mean',
         'Storage': 'mean'
     }).reset_index().sort_values(
-        by='Accuracy', ascending=False)
+        by=metric, ascending=False)
     print(svm_df_grouped)
 
     return knn_df, svm_df
