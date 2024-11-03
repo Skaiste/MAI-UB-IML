@@ -130,3 +130,33 @@ python3 result_analysis_best_knn_best_svm.py -d mushroom -m 'Storage'
 ```bash
 deactivate
 ```
+
+
+### Work done by team:
+- Skaiste Butkute:
+  - Code:
+    - Wrote scripts `main.py`, `data_parser.py`, `SVM.py`, `kNN.py` and base for `result_analysis.py`
+    - Wrote algorithms within the scripts: euclidean distance, majority class voting, filter and wrapper weighting strategies, DROP3 instance reduction.
+  - Report sections:
+    - Methodology:
+      - k-NN Implementation
+      - Performance Metrics
+    - Conclusion
+- Tatevik Davtyan:
+  - Code:
+    - Edited & improved on `data_parser.py`
+    - Wrote scripts: `result_analysis.py` and `result_analysis_best_knn_best_svm.py`
+    - Wrote algorithms within the scripts: minkowski distance, inverse distance weighting, fcnn1 instance reduction.
+  - Report sections:
+    - Methodology:
+      - SVM Implementation
+    - Results
+- Wiktoria Pejs:
+  - Code:
+    - Wrote algorithms within the scripts: manhattan distance, shepards work voting and RENN instance reduction.
+  - Report sections: 
+    - Introduction, 
+    - Methodology: 
+      - Data preparation
+      - Cross-validation
+      - Reduction techniques
