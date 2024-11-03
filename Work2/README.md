@@ -116,11 +116,17 @@ python3 result_analysis.py -d sick -m 'Storage' -r ./results_reduced
 ```
 4. Running the script evaluating instance reduction models using accuracy, prediction and storage time for mushroom dataset
 ```bash
-python3 result_analysis.py -d mushroom -m 'Accuracy' -r ./results_reduced
-python3 result_analysis.py -d mushroom -m 'Pred. Time' -r ./results_reduced
-python3 result_analysis.py -d mushroom -m 'Storage' -r ./results_reduced
+python3 result_analysis.py -d mushroom -m 'Accuracy' -r ./results_reduced  -svm_ir True
+python3 result_analysis.py -d mushroom -m 'Pred. Time' -r ./results_reduced  -svm_ir True
+python3 result_analysis.py -d mushroom -m 'Storage' -r ./results_reduced  -svm_ir True
 ```
-5. Close virtual env
+5. Running the script evaluating the best SVM and best k-NN models
+```bash
+python3 result_analysis_best_knn_best_svm.py -d mushroom -m 'Accuracy'  
+python3 result_analysis_best_knn_best_svm.py -d mushroom -m 'Pred. Time' 
+python3 result_analysis_best_knn_best_svm.py -d mushroom -m 'Storage' 
+```
+6. Close virtual env
 ```bash
 deactivate
 ```
