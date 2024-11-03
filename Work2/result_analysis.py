@@ -63,7 +63,7 @@ def load_results(res_dir):
 
 
 
-def sort_and_prepare_results(results, metric, confidence):
+def sort_and_prepare_results(results, metric, confidence, svm_ir):
     # Prepare KNN table
     knn_data = []
     print(" KNN ")
@@ -188,10 +188,12 @@ def sort_and_prepare_results(results, metric, confidence):
     svm_data = []
     for name, svm_results in results['SVM'].items():
         for fold in range(10):
-            if svm_results.get('Storage', {}) == {}:
+            print(svm_results)
+            if svm_results.get('storage', {}) == {}:
                 storage = 100
+
             else:
-                storage = svm_results.get('Storage', {}).get(str(fold), {})
+                storage = svm_results.get('storage', {}).get(str(fold), {})
             svm_data.append({
                 'Kernel': svm_results.get('kernel', 'no_kernel'),
                 'Reduction': svm_results.get('reduction', 'no_reduction'),
@@ -211,25 +213,65 @@ def sort_and_prepare_results(results, metric, confidence):
         if i % 10 == 0:
             models.append(model)
             model.append(svm_df.iloc[i - 1][metric])
-            model_names.append(str(svm_df["Kernel"].iloc[i - 1]))
+            model_names.append(str(svm_df["Kernel"].iloc[i - 1])+str(svm_df["Reduction"].iloc[i - 1]))
             model = []
         else:
             model.append(svm_df.iloc[i - 1][metric])
     if all(i == models[0] for i in models):
         print("All of the elements of the " + metric + " are the same, so we can't perform the test")
+    elif svm_ir:
+        res = friedmanchisquare(*models)
+        pvalue = res.pvalue
+        ranked_models = [rankdata(model, method="average") for model in models]
 
+        average_ranks = [sum(ranks) / len(ranks) for ranks in ranked_models]
+
+        if pvalue > (1 - float(confidence)):
+            print(" The values are not significantly different")
+        else:
+            print(" The values are significantly different, H₀ is rejected, let's apply Nemenyi Post-Doc test")
+            models = np.array(models).T
+            nemenyi = sp.posthoc_nemenyi_friedman(np.array(models))
+            print(nemenyi)
+
+            models = models.T
+            if metric == "Pred. Time":
+
+                models = [np.mean(model) for model in models]
+            else:
+                models = [-1 * np.mean(model) for model in models]
+            ranked_models = rankdata(models)
+
+            # Create a figure and an axis
+            plt.figure(figsize=(10, 2), dpi=100)
+            plt.title('Critical difference diagram of average score ranks')
+            print(ranked_models)
+            sp.critical_difference_diagram(
+                ranked_models,
+                nemenyi,
+
+            )
+            plt.show()
     else:
         t_stat, p_value = stats.ttest_rel(models[0], models[1])
         if p_value > (1 - float(confidence)):
             print(" The values are not significantly different")
+
         else:
             print(" The values are significantly different")
+    if metric == "Pred. Time":
+        ascend = True
+    else:
+        ascend = False
+
     svm_df_grouped = svm_df.groupby(['Kernel','Reduction']).agg({
         'Accuracy': 'mean',
         'Pred. Time': 'mean',
         'Storage': 'mean'
+
     }).reset_index().sort_values(
-        by=metric, ascending=False)
+        by=metric, ascending=ascend)
+
     print(svm_df_grouped)
 
     return knn_df, svm_df
@@ -276,6 +318,12 @@ def main():
         default=0.95
 
     )
+    parser.add_argument(
+        "-svm_ir", "--svm_ir",
+        default=False
+
+    )
+
     args = parser.parse_args()
 
     args.result_directory = args.result_directory / args.dataset
@@ -283,7 +331,7 @@ def main():
     results = load_results(args.result_directory)
 
 
-    knn, svm = sort_and_prepare_results(results, args.metric, args.confidence)
+    knn, svm = sort_and_prepare_results(results, args.metric, args.confidence,args.svm_ir)
 
     # print(dataframe_to_markdown(knn))
     # print(dataframe_to_markdown(svm))
