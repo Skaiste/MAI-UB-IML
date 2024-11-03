@@ -46,8 +46,10 @@ def load_results(res_dir):
             }
 
         else:
-
-            results['SVM'][data['kernel']] = {
+            name = ''.join(fn.stem.split('_')[1:])
+            results['SVM'][name] = {
+                'kernel': data['kernel'],
+                'reduction': data.get('reduction', 'no_reduction'),
                 'accuracy': {f: data['folds'][f]['accuracy'] for f in data['folds']},
                 'correct': {f: data['folds'][f]['correct'] for f in data['folds']},
                 'incorrect': {f: data['folds'][f]['incorrect'] for f in data['folds']},
@@ -77,6 +79,8 @@ def sort_and_prepare_results(results, metric, confidence):
             }
 
             for k in [1, 3, 5, 7]:
+                if k not in knn_results['k']:
+                    continue
 
                 row = row_.copy()
                 row['Accuracy'] = knn_results['k'].get(k, np.nan).get('accuracy', np.nan).get(str(fold), np.nan)
@@ -182,14 +186,15 @@ def sort_and_prepare_results(results, metric, confidence):
     # Prepare SVM table
     print("SVM")
     svm_data = []
-    for kernel, svm_results in results['SVM'].items():
+    for name, svm_results in results['SVM'].items():
         for fold in range(10):
             if svm_results.get('Storage', {}) == {}:
                 storage = 100
             else:
                 storage = svm_results.get('Storage', {}).get(str(fold), {})
             svm_data.append({
-                'Kernel': kernel,
+                'Kernel': svm_results.get('kernel', 'no_kernel'),
+                'Reduction': svm_results.get('reduction', 'no_reduction'),
                 'Accuracy': svm_results.get('accuracy', np.nan).get(str(fold), np.nan),
                 'Pred. Time': svm_results.get('pred_time', {}).get(str(fold), np.nan),
                 'Fold': fold,
