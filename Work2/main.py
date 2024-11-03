@@ -50,11 +50,11 @@ def run_knn(train_input, train_output, test_input, test_output, args, skip_if_ex
         knn = KNN(k=args.k, dm=args.distance_type, vs=args.voting_schema, ws=args.weighting_strategy, rm=args.instance_reduction, r=args.minkowski_r)
 
         # load cached weights
-        # wcdir = args.cache_directory / "weighted"
-        # weighted_fn = wcdir / f"fold.{fold}.{args.weighting_strategy.value}.weights.npy"
+        wcdir = args.cache_directory / "weighted"
+        weighted_fn = wcdir / f"fold.{fold}.{args.weighting_strategy.value}.weights.{args.instance_reduction.value}.npy"
         cached_weights = None
-        # if not args.disable_cache and weighted_fn.is_file():
-        #     cached_weights = np.load(weighted_fn)
+        if not args.disable_cache and weighted_fn.is_file():
+            cached_weights = np.load(weighted_fn)
 
         knn.fit(train_input[fold], train_output[fold], cached_weights)
 
@@ -75,9 +75,9 @@ def run_knn(train_input, train_output, test_input, test_output, args, skip_if_ex
         result['folds'][fold]['pred_time'] = end_time - start_time
 
         # cache weighted input set
-        # if not args.disable_cache:
-        #     wcdir.mkdir(parents=True, exist_ok=True)
-        #     np.save(weighted_fn, knn.feature_weights)
+        if not args.disable_cache:
+            wcdir.mkdir(parents=True, exist_ok=True)
+            np.save(weighted_fn, knn.feature_weights)
 
 
     with open(results_path, "w") as f:
@@ -101,7 +101,7 @@ def run_svm(train_input, train_output, test_input, test_output, args, skip_if_ex
         'reduction': args.instance_reduction.value
     }
     for fold in range(len(train_input)):
-        svm = SVM(args.kernel)
+        svm = SVM(args.kernel, reduction=args.instance_reduction)
         svm.fit(train_input[fold], train_output[fold])
 
         start_time = time.time()
@@ -119,7 +119,6 @@ def run_svm(train_input, train_output, test_input, test_output, args, skip_if_ex
         result['folds'][fold]['incorrect'] = int(result_counts[False] if False in result_counts else 0)
         result['folds'][fold]['predictions'] = list([s for s in predictions])
         result['folds'][fold]['pred_time'] = end_time - start_time
-
 
     with open(results_path, "w") as f:
         json.dump(result, f, indent=4)
