@@ -1,15 +1,39 @@
 # MAI-UB-IML
 
+## Work 3, Deadline - December, 8th
+
+### Datasets:
+1. Sick
+    - Number of Cases: 3 772
+    - Numeric attributes: 7
+    - Nominal attributes: 22
+    - Classes: 2
+    - Deviation of class distribution: 43.88%
+    - Instances belonging to the majority class: 93.88%
+    - Instances belonging to the minority class: 6.12%
+    - Missing values: 5.54%
+
+2. Mushroom
+    - Number of Cases: 8 124
+    - Nominal attributes: 22
+    - Classes: 2
+    - Deviation of class distribution: 1.80%
+    - Instances belonging to the majority class: 51.80%
+    - Instances belonging to the minority class: 48.20%
+    - Missing values: 1.38%
+
+3. cmc
+    - Number of Cases: 1 473
+    - Numeric attributes: 2
+    - Nominal attributes: 7
+    - Classes: 3
+    - Deviation of class distribution: 8.26%
+    - Instances belonging to the majority class: 42.70%
+    - Instances belonging to the minority class: 22.61%
+
+
+
 ## Work 2, Deadline - November, 3rd
-
-### Steps:
- - [x] Read the source data for training and testing the algorithms
- - [x] Read and save the information from a training and their corresponding testing  file in a TrainMatrix and a TestMatrix, respectively. Normalize all the numerical attributes in the range [0..1].
- - [x] Write a python fn that repeats the previous process for the 10-fold cross-validation files.
- - [x] Write a Python function for classifying, using a kNN algorithm.
- - [ ] Write a Python function for classifying, using an SVM algorithm.
- - [ ] Modify the kNN algorithm so that it includes a pre-processing for reducing the training set. Instance reduction techniques!
-
 
 ### Datasets:
 1. Sick
@@ -33,46 +57,45 @@
 
 ## KNN accuracy results for sick dataset before feature reduction
 
-| Distance | Voting | Weighting | Accuracy | Pred. Time | Accuracy | Pred. Time | Accuracy | Pred. Time | Accuracy | Pred. Time |
-|---|---|---|---|---|---|---|---|---|---|---|
-|||| K1 | K1 | K3 | K3 | K5 | K5 | K7 | K7 |
-| manhattan | shepards_work | filter | 97.13639 | 0.62944 | 97.58732 | 0.63044 | 97.77328 | 0.62951 | 97.56101 | 0.62594 |
-| manhattan | shepards_work | equal | 96.55382 | 0.63713 | 97.08439 | 0.62584 | 97.05773 | 0.62980 | 96.97787 | 0.62767 |
-| manhattan | shepards_work | wrapper | 96.55382 | 0.62731 | 97.08439 | 0.62772 | 97.05773 | 0.63531 | 96.97787 | 0.63277 |
-| manhattan | majority_class | equal | 96.55382 | 0.62826 | 97.11106 | 0.64406 | 97.08404 | 0.64111 | 97.00433 | 0.64050 |
-| manhattan | majority_class | filter | 97.13654 | 0.64391 | 97.58746 | 0.63973 | 97.74654 | 0.64256 | 97.58760 | 0.64527 |
-| euclidean | shepards_work | filter | 97.13716 | 0.64238 | 97.61469 | 0.65236 | 97.48199 | 0.64946 | 97.64079 | 0.64884 |
-| euclidean | shepards_work | equal | 96.73956 | 0.64643 | 96.97843 | 0.64650 | 97.03106 | 0.64516 | 97.19028 | 0.64804 |
-| euclidean | shepards_work | wrapper | 96.73956 | 0.64858 | 96.97843 | 0.64689 | 97.03106 | 0.65811 | 97.19028 | 0.65671 |
-| euclidean | majority_class | filter | 97.13745 | 0.66457 | 97.42908 | 0.66322 | 97.40228 | 0.65727 | 97.53483 | 0.65246 |
-| manhattan | majority_class | wrapper | 96.55382 | 0.66004 | 97.11106 | 0.65006 | 97.08404 | 0.65221 | 97.00433 | 0.66224 |
-| euclidean | majority_class | equal | 96.73956 | 0.64885 | 96.87240 | 0.73380 | 97.05759 | 0.69389 | 97.13723 | 0.65933 |
-| euclidean | majority_class | wrapper | 96.73956 | 0.67286 | 96.87240 | 0.65169 | 97.05759 | 0.66113 | 97.13723 | 0.65321 |
-| minkowski | shepards_work | equal | 96.73956 | 0.66832 | 96.97843 | 0.66521 | 97.03106 | 0.65648 | 97.19028 | 0.66256 |
-| minkowski | shepards_work | filter | 97.21688 | 0.67541 | 97.53511 | 0.66498 | 97.53490 | 0.66027 | 97.66746 | 0.67143 |
-| euclidean | inverse_distance | equal | 96.73956 | 0.65532 | 96.44800 | 0.66173 | 96.95156 | 0.67015 | 96.97808 | 0.67889 |
-| minkowski | majority_class | equal | 96.73956 | 0.66136 | 96.87240 | 0.65984 | 97.05759 | 0.65854 | 97.13723 | 0.66128 |
-| manhattan | inverse_distance | filter | 97.24264 | 0.66245 | 97.53476 | 0.66901 | 97.66669 | 0.67902 | 97.58788 | 0.66911 |
-| minkowski | shepards_work | wrapper | 96.73956 | 0.67334 | 96.97843 | 0.66484 | 97.03106 | 0.67226 | 97.19028 | 0.66220 |
-| euclidean | inverse_distance | filter | 97.05766 | 0.66135 | 97.03134 | 0.67637 | 97.42831 | 0.67490 | 97.18979 | 0.68076 |
-| minkowski | majority_class | filter | 97.19022 | 0.66939 | 97.53511 | 0.67083 | 97.42873 | 0.67146 | 97.58753 | 0.66728 |
-| manhattan | inverse_distance | equal | 96.55382 | 0.67061 | 96.31530 | 0.67057 | 97.03127 | 0.66421 | 96.84518 | 0.67136 |
-| euclidean | inverse_distance | wrapper | 96.73956 | 0.66407 | 96.44800 | 0.67370 | 96.95156 | 0.67087 | 96.97808 | 0.68463 |
-| minkowski | shepards_work | filter | 97.11008 | 0.67743 | 97.56094 | 0.67431 | 97.69356 | 0.67247 | 97.66718 | 0.68742 |
-| minkowski | majority_class | equal | 96.55382 | 0.67214 | 97.11106 | 0.67511 | 97.08404 | 0.68451 | 97.00433 | 0.66812 |
-| minkowski | shepards_work | equal | 96.55382 | 0.67045 | 97.08439 | 0.68198 | 97.05773 | 0.69765 | 96.97787 | 0.67089 |
-| minkowski | majority_class | filter | 97.08334 | 0.68026 | 97.77286 | 0.68086 | 97.79952 | 0.67812 | 97.72016 | 0.68406 |
-| minkowski | majority_class | wrapper | 96.55382 | 0.67568 | 97.11106 | 0.69071 | 97.08404 | 0.70214 | 97.00433 | 0.70887 |
-| minkowski | shepards_work | wrapper | 96.55382 | 0.68864 | 97.08439 | 0.68181 | 97.05773 | 0.68327 | 96.97787 | 0.68056 |
-| manhattan | inverse_distance | wrapper | 96.55382 | 0.68706 | 96.31530 | 0.68001 | 97.03127 | 0.68135 | 96.84518 | 0.68255 |
-| minkowski | inverse_distance | equal | 96.55382 | 0.69918 | 96.31530 | 0.67645 | 97.03127 | 0.70110 | 96.84518 | 0.69771 |
-| minkowski | inverse_distance | equal | 96.73956 | 0.67965 | 96.44800 | 0.68831 | 96.95156 | 0.69358 | 96.97808 | 0.69269 |
-| minkowski | inverse_distance | filter | 97.05780 | 0.74470 | 96.97794 | 0.68158 | 97.29568 | 0.68970 | 97.58760 | 0.69029 |
-| minkowski | majority_class | wrapper | 96.73956 | 0.70725 | 96.87240 | 0.69014 | 97.05759 | 0.68222 | 97.13723 | 0.69773 |
-| minkowski | inverse_distance | filter | 97.24278 | 0.71239 | 97.53455 | 0.70152 | 97.61371 | 0.69123 | 97.53511 | 0.71060 |
-| minkowski | inverse_distance | wrapper | 96.73956 | 0.71139 | 96.44800 | 0.69087 | 96.95156 | 0.70057 | 96.97808 | 0.70897 |
-| minkowski | inverse_distance | wrapper | 96.55382 | 0.72754 | 96.31530 | 0.70987 | 97.03127 | 0.71994 | 96.84518 | 0.70085 |
-
+| Distance | Voting | Weighting | Accuracy | Pred. Time | Accuracy | Pred. Time | Accuracy | Pred. Time | Accuracy | Pred. Time | Best k |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+|||| K1 | K1 | K3 | K3 | K5 | K5 | K7 | K7 ||
+| euclidean | majority_class | equal | 95.89160 | 0.48737 | 95.86430 | 0.48270 | 96.20878 | 0.46841 | 96.26190 | 0.46183 | 7 |
+| manhattan | majority_class | filter | 97.58739 | 0.64161 | 97.72030 | 0.89665 | 97.58739 | 0.95843 | 97.45533 | 0.91822 | 1 |
+| manhattan | shepards_work | filter | 97.58739 | 0.66061 | 97.69363 | 0.66532 | 97.71995 | 0.65684 | 97.69363 | 0.65779 | 5 |
+| manhattan | majority_class | equal | 95.62606 | 0.66470 | 95.81076 | 0.67922 | 96.26204 | 0.66267 | 96.12935 | 0.65826 | 7 |
+| manhattan | shepards_work | wrapper | 96.36870 | 0.66557 | 96.63339 | 0.66295 | 96.50098 | 0.66635 | 96.71318 | 0.67527 | 3 |
+| manhattan | shepards_work | equal | 95.62606 | 0.66312 | 95.70571 | 0.67209 | 95.83806 | 0.66730 | 95.86451 | 0.68108 | 1 |
+| euclidean | majority_class | filter | 96.92510 | 0.68479 | 96.87156 | 0.68939 | 96.87219 | 0.73314 | 97.03134 | 0.79163 | 1 |
+| euclidean | shepards_work | equal | 95.89160 | 0.68234 | 95.91784 | 0.68611 | 95.91749 | 0.67804 | 96.07650 | 0.67928 | 5 |
+| manhattan | inverse_distance | equal | 95.62606 | 0.67807 | 95.70501 | 0.68082 | 95.54754 | 0.69004 | 95.38734 | 0.68990 | 1 |
+| euclidean | shepards_work | filter | 96.92510 | 0.70519 | 97.13674 | 0.69206 | 97.05752 | 0.69324 | 97.24334 | 0.74089 | 3 |
+| manhattan | inverse_distance | wrapper | 96.36870 | 0.68665 | 96.10233 | 0.71627 | 96.26267 | 0.71238 | 96.31558 | 0.70863 | 1 |
+| euclidean | shepards_work | wrapper | 96.20997 | 0.69586 | 96.44821 | 0.70556 | 96.42168 | 0.74770 | 96.60736 | 0.72980 | 1 |
+| euclidean | majority_class | wrapper | 96.20997 | 0.70259 | 96.42126 | 0.69772 | 96.47431 | 0.71287 | 96.63318 | 0.71387 | 3 |
+| manhattan | inverse_distance | filter | 97.58739 | 0.94687 | 97.21709 | 1.00387 | 97.11050 | 1.00152 | 97.29632 | 0.70729 | 7 |
+| euclidean | inverse_distance | wrapper | 96.20997 | 0.70085 | 96.02416 | 0.71392 | 96.07686 | 0.71748 | 95.99735 | 0.72451 | 1 |
+| euclidean | inverse_distance | filter | 96.92510 | 0.74238 | 96.34183 | 0.71620 | 96.66013 | 0.73943 | 96.55389 | 0.72490 | 3 |
+| euclidean | inverse_distance | equal | 95.89160 | 0.73641 | 95.89076 | 0.72615 | 96.12913 | 0.78553 | 95.62578 | 0.79529 | 3 |
+| manhattan | majority_class | wrapper | 96.36870 | 0.93362 | 96.65943 | 0.94236 | 96.60701 | 0.95883 | 96.71297 | 0.90647 | 7 |
+| minkowski | shepards_work | filter | 96.60687 | 1.06628 | 96.71290 | 1.05283 | 96.76609 | 1.03741 | 96.87233 | 0.96712 | 7 |
+| minkowski | majority_class | wrapper | 96.20990 | 0.96304 | 96.26197 | 1.04454 | 96.39460 | 0.98180 | 96.55382 | 0.98179 | 1 |
+| minkowski | majority_class | equal | 95.75918 | 0.96675 | 95.78445 | 0.98657 | 95.99679 | 1.03284 | 96.15601 | 1.02612 | 1 |
+| minkowski | majority_class | filter | 96.34162 | 0.98412 | 96.52687 | 0.99887 | 96.39467 | 1.00154 | 96.71325 | 0.97773 | 7 |
+| minkowski | shepards_work | filter | 96.34162 | 1.03372 | 96.50042 | 1.02019 | 96.55382 | 0.97979 | 96.71325 | 1.05410 | 5 |
+| minkowski | shepards_work | equal | 95.75918 | 0.98232 | 95.91756 | 0.98151 | 95.91763 | 0.98254 | 96.10317 | 0.97942 | 7 |
+| minkowski | majority_class | filter | 96.60687 | 1.00688 | 96.65999 | 1.00479 | 96.60694 | 0.98519 | 96.76623 | 1.03306 | 5 |
+| minkowski | majority_class | wrapper | 96.26267 | 0.98561 | 96.42119 | 1.03454 | 96.55389 | 1.03911 | 96.52708 | 1.00222 | 1 |
+| minkowski | shepards_work | equal | 95.83848 | 0.98650 | 95.94409 | 1.01299 | 96.02366 | 0.99330 | 96.07664 | 0.98984 | 1 |
+| minkowski | majority_class | equal | 95.83848 | 0.98962 | 95.89055 | 1.00098 | 96.10275 | 0.99171 | 96.26197 | 1.00043 | 5 |
+| minkowski | inverse_distance | wrapper | 96.20990 | 0.99539 | 96.23544 | 1.01723 | 96.15594 | 1.02846 | 95.86451 | 1.07648 | 1 |
+| minkowski | inverse_distance | filter | 96.34162 | 1.00296 | 96.36835 | 1.04291 | 96.20906 | 1.01985 | 96.36884 | 1.01910 | 1 |
+| minkowski | inverse_distance | equal | 95.75918 | 1.02949 | 95.78445 | 1.02214 | 95.99679 | 1.03853 | 95.62621 | 1.04451 | 3 |
+| minkowski | inverse_distance | wrapper | 96.26267 | 1.02925 | 96.34190 | 1.02819 | 96.10331 | 1.04314 | 95.75848 | 1.15012 | 3 |
+| minkowski | inverse_distance | filter | 96.60687 | 1.07368 | 96.44835 | 1.11725 | 96.31537 | 1.03973 | 96.44779 | 1.03102 | 7 |
+| minkowski | shepards_work | wrapper | 96.20990 | 1.06229 | 96.26253 | 1.05203 | 96.42168 | 1.04890 | 96.58069 | 1.04549 | 7 |
+| minkowski | inverse_distance | equal | 95.83848 | 1.04174 | 95.91700 | 1.05210 | 96.12920 | 1.06004 | 95.46691 | 1.05832 | 1 |
+| minkowski | shepards_work | wrapper | 96.26267 | 1.08242 | 96.36863 | 1.06983 | 96.50133 | 1.08450 | 96.63382 | 1.06248 | 7 |
 
 ### Notes from loading and parsing arrf files:
 The testing set contains more abnormal entries where:
