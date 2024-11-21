@@ -1,4 +1,3 @@
-import pathlib
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
@@ -23,10 +22,11 @@ class MinMaxNormalisation:
             
 #Edit by Tatevik
 class Normalization:
-    def __init__(self, nominal_values):
+    def __init__(self, nominal_values, normalise_nominal=True):
         self.encoders = {}
         self.num_norm = MinMaxNormalisation()
         self.nom_vals = nominal_values
+        self.normalise_nominal = normalise_nominal
 
     def normalise(self, df, train=True):
         for name, dt in df.dtypes.items():
@@ -35,19 +35,22 @@ class Normalization:
             else:
                 #Edit by Tatevik
                 if name.lower() != "class":
-                    column_reshaped = df[name].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x).values.reshape(-1, 1)
-                    if train:
-                        if name not in self.encoders:
-                            self.encoders[name] = OneHotEncoder(handle_unknown='ignore', sparse_output=False, categories=[self.nom_vals[name]])
-                            self.encoders[name].fit(column_reshaped)
+                    if self.normalise_nominal:
+                        column_reshaped = df[name].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x).values.reshape(-1, 1)
+                        if train:
+                            if name not in self.encoders:
+                                self.encoders[name] = OneHotEncoder(handle_unknown='ignore', sparse_output=False, categories=[self.nom_vals[name]])
+                                self.encoders[name].fit(column_reshaped)
+    
+                        encoded = self.encoders[name].transform(column_reshaped)
+                        encoded = pd.DataFrame(
+                            encoded,
+                            columns=self.encoders[name].get_feature_names_out([name])
+                        )
 
-                    encoded = self.encoders[name].transform(column_reshaped)
-                    encoded = pd.DataFrame(
-                        encoded,
-                        columns=self.encoders[name].get_feature_names_out([name])
-                    )
-
-                    df = pd.concat([df.drop(name, axis=1), encoded], axis=1)
+                        df = pd.concat([df.drop(name, axis=1), encoded], axis=1)
+                    else:
+                        df[name] = df[name].apply(lambda x: int(x.decode('utf-8')) if isinstance(x, bytes) else x)
         return df
 
 
@@ -69,7 +72,7 @@ def replace_missing_data(df, numerical_means, common_nominals):
                     df.iloc[j, k] = common_nominals[df.dtypes.keys()[k]]
 
 
-def get_data(data_fn, cache=True, cache_dir=None, split=0.8):
+def get_data(data_fn, cache=True, cache_dir=None, split=0.8, normalise_nominal=True):
     training_df = None
     testing_df = None
     if cache:
@@ -108,7 +111,7 @@ def get_data(data_fn, cache=True, cache_dir=None, split=0.8):
 
         #Edit by  Tatevik
         nominal_values = {attr:list(data[1][attr][1]) for attr in data[1].names() if data[1][attr][0] == 'nominal'}
-        general_normalizer = Normalization(nominal_values)
+        general_normalizer = Normalization(nominal_values, normalise_nominal=normalise_nominal)
         training_df = general_normalizer.normalise(training_df)
         testing_df = general_normalizer.normalise(testing_df, train=False)
 
