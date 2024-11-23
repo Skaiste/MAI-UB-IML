@@ -73,57 +73,48 @@ def replace_missing_data(df, numerical_means, common_nominals):
 
 
 def get_data(data_fn, cache=True, cache_dir=None, split=0.8, normalise_nominal=True):
-    training_df = None
-    testing_df = None
+    df = None
     if cache:
-        training_cache_fn = cache_dir / (data_fn.stem + '.pkl')
-        if training_cache_fn.is_file():
-            training_df = pd.read_pickle(training_cache_fn)
-        testing_cache_fn = cache_dir / (data_fn.stem + '.pkl')
-        if testing_cache_fn.is_file():
-            testing_df = pd.read_pickle(testing_cache_fn)
+        cache_fn = cache_dir / (data_fn.stem + '.pkl')
+        if cache_fn.is_file():
+            df = pd.read_pickle(cache_fn)
 
-    if training_df is None or testing_df is None:
+    if df is None:
         data = loadarff(data_fn)
         df = pd.DataFrame(data[0], columns=data[1]._attributes.keys())
-        training_df = df.sample(frac=split)
-        testing_df = df.drop(training_df.index)
 
         # retrieving means for numerical and most frequent category for nominal data
         allow_to_remove = 'TBG'
         numerical_means = {}
         common_nominals = {}
-        for name, dt in training_df.dtypes.items():
+        for name, dt in df.dtypes.items():
             if dt.name == 'float64':
                 # if the whole column has missing data -> remove the whole column in both
                 #       training and testing dataframes of the same fold
-                if len(training_df[name].unique()) == 1 and name == allow_to_remove:
-                    training_df.drop(name, axis='columns', inplace=True)
+                if len(df[name].unique()) == 1 and name == allow_to_remove:
+                    df.drop(name, axis='columns', inplace=True)
                     # remove the same column in the test dataframe
-                    testing_df.drop(name, axis='columns', inplace=True)
+                    df.drop(name, axis='columns', inplace=True)
                 else:
-                    numerical_means[name] = np.nanmean(training_df[name])
+                    numerical_means[name] = np.nanmean(df[name])
             else:
-                common_nominals[name] = training_df[name].dropna().mode().values[0].decode('utf-8')
+                common_nominals[name] = df[name].dropna().mode().values[0].decode('utf-8')
 
-        replace_missing_data(training_df, numerical_means, common_nominals)
-        replace_missing_data(testing_df, numerical_means, common_nominals)
+        replace_missing_data(df, numerical_means, common_nominals)
 
         #Edit by  Tatevik
         nominal_values = {attr:list(data[1][attr][1]) for attr in data[1].names() if data[1][attr][0] == 'nominal'}
         general_normalizer = Normalization(nominal_values, normalise_nominal=normalise_nominal)
-        training_df = general_normalizer.normalise(training_df)
-        testing_df = general_normalizer.normalise(testing_df, train=False)
+        training_df = general_normalizer.normalise(df)
 
         # cache normalised data
         if cache and cache_dir is not None:
-            training_df.to_pickle(training_cache_fn)
-            testing_df.to_pickle(testing_cache_fn)
+            df.to_pickle(cache_fn)
 
     #Edit by Tatevik
     input_columns = {}
     output_column = {}
-    input_columns_i = list(training_df.columns)
+    input_columns_i = list(df.columns)
     if 'Class' in list(input_columns_i):
         input_columns_i.remove('Class')
         input_columns = input_columns_i
@@ -133,11 +124,8 @@ def get_data(data_fn, cache=True, cache_dir=None, split=0.8, normalise_nominal=T
         input_columns = input_columns_i
         output_column = 'class'
 
-    train_input = training_df[input_columns]
-    training_df[output_column] = training_df[output_column].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x)
-    train_output = training_df[output_column]
-    test_input = testing_df[input_columns]
-    testing_df[output_column] = testing_df[output_column].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x)
-    test_output = testing_df[output_column]
+    input = df[input_columns]
+    df[output_column] = df[output_column].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x)
+    output = df[output_column]
 
-    return train_input, train_output, test_input, test_output
+    return input, output
