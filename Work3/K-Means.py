@@ -15,7 +15,7 @@ sys.path.append(str(curr_dir))
 from data_parser import get_data
 
 data_dir = curr_dir / "datasets"
-dataset_name = "cmc"
+dataset_name = "mushroom"
 
 cache_dir = curr_dir / "cache"
 cache_dir.mkdir(parents=True, exist_ok=True)
@@ -26,7 +26,7 @@ if not dataset.is_file():
 
 print("Loading data")
 normalise_nominal = True if dataset_name != "cmc" else False
-train_input, train_output, test_input, test_output = get_data(dataset, cache_dir=cache_dir, cache=False, normalise_nominal=normalise_nominal)
+input, output = get_data(dataset, cache_dir=cache_dir, cache=False, normalise_nominal=normalise_nominal)
 
 # %%
 
@@ -50,7 +50,6 @@ def random_partition(X, k):
 def euclidean_distance(x, y, weights):
     return np.sqrt(np.sum(weights * (x - y) ** 2, axis=1))
 
-# %%
 def kmeans_fit(X, k):
     # Firstly, randomly initialise centroids
     centroids = random_partition(X, k)
@@ -72,42 +71,92 @@ def kmeans_fit(X, k):
         if converged:
             return [pd.DataFrame(c) for c in clusters]
 
-input_clusters = kmeans_fit(train_input, 3)
 
 # %%
-def determine_class(clusters, y):
-    cluster_outputs = [y.loc[[i.name for _,i in c.iterrows()]] for c in clusters]
-    cluster_outputs = [c.value_counts() for c in cluster_outputs]
-    class_values = {cls:[c[cls] for c in cluster_outputs] for cls in cluster_outputs[0].keys()}
-    cluster_classes = {counts.index(max(counts)):cls for cls, counts in class_values.items()}
 
-    return list(cluster_classes.values())
+def silhouette_score(clusters):
+    scores = []
+    for ci in clusters:
+        scores.append([])
 
-output_clusters = determine_class(input_clusters, train_output)
+        if len(ci) == 1:
+            scores[-1].append(0)
+            continue
 
-clusters = [{
-    'input':input_clusters[i],
-    'output':output_clusters[i],
-    'centroids': get_cluster_centroid(input_clusters[i])}
-    for i in range(len(input_clusters))]
+        for c_idx in ci.index:
+            ci_without_c = ci.drop(index=c_idx)
+            c = ci.loc[c_idx]
+            distances = euclidean_distance(c, ci_without_c, np.ones(c.shape[0]))
+            a = np.mean(distances)
+            b = min(distances)
+            scores[-1].append((b - a) / max(a, b))
 
-# %%
-def kmeans_predict(clstr, x):
-    inputs = pd.DataFrame([c['centroids'] for c in clstr])
-    outputs = [c['output'] for c in clstr]
-    distances = euclidean_distance(x, inputs, np.ones(x.shape[0]))
-
-    return outputs[distances.idxmin()]
+    return [np.array(s).mean() for s in scores]
 
 # %%
-def kmeans_predict_all(clstr, X):
-    outputs = []
-    for idx, x in X.iterrows():
-        outputs.append(kmeans_predict(clstr, x))
-    return pd.Series(outputs)
 
-predictions = kmeans_predict_all(clusters, test_input)
-matches = test_output == predictions.reindex(test_output.index)
-result_counts = matches.value_counts()
-accuracy = result_counts[True] / matches.count() * 100
-print(f"Accuracy: {accuracy:.2f}%")
+# search for cluster combination with the best mean of the silhouette score across all clusters
+def explore_seed(k=3, threshold=0.5):
+    iterations = 100
+
+    best = None
+    while iterations > 0:
+        seed = random.randint(1, 10000)
+        random.seed(seed)
+        input_clusters = kmeans_fit(input, k)
+        scores = silhouette_score(input_clusters)
+        if best is None or np.array(scores).mean() > np.array(best['scores']).mean():
+            best = {
+                'clusters' : input_clusters,
+                'scores': scores,
+                'seed': seed,
+            }
+
+        if np.array(scores).mean() > threshold:
+            break
+
+        # if iterations % 10 == 0:
+        print(100 - iterations, seed, scores)
+
+        iterations -= 1
+    return best
+
+# random.seed(226)
+random.seed(42)
+best_clusters = explore_seed()
+
+# for k = 3, best clustering seed = 7931
+
+# %%
+
+def explore_k_and_seed(threshold=0.5, max_iter=2):
+    best = None
+    for k in range(2, 11):
+        iterations = max_iter
+        print("Running kmeans with k =", k)
+        while iterations > 0:
+            seed = random.randint(1, 10000)
+            random.seed(seed)
+            input_clusters = kmeans_fit(input, k)
+            scores = silhouette_score(input_clusters)
+            if best is None or np.array(scores).mean() > np.array(best['scores']).mean():
+                best = {
+                    'clusters' : input_clusters,
+                    'scores': scores,
+                    'seed': seed,
+                    'k': k
+                }
+
+            if np.array(scores).mean() > threshold:
+                break
+
+            # if iterations % 10 == 0:
+            print(max_iter - iterations, seed, scores)
+
+            iterations -= 1
+    return best
+
+# random.seed(7931)
+random.seed(42)
+best_clusters = explore_k_and_seed()
+

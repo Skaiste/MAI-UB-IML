@@ -51,6 +51,7 @@ class Normalization:
                         df = pd.concat([df.drop(name, axis=1), encoded], axis=1)
                     else:
                         df[name] = df[name].apply(lambda x: int(x.decode('utf-8')) if isinstance(x, bytes) else x)
+                        df[name] = self.num_norm.normalise(name, df[name], train)
         return df
 
 
@@ -72,7 +73,7 @@ def replace_missing_data(df, numerical_means, common_nominals):
                     df.iloc[j, k] = common_nominals[df.dtypes.keys()[k]]
 
 
-def get_data(data_fn, cache=True, cache_dir=None, split=0.8, normalise_nominal=True):
+def get_data(data_fn, cache=True, cache_dir=None, normalise_nominal=True):
     df = None
     if cache:
         cache_fn = cache_dir / (data_fn.stem + '.pkl')
@@ -105,7 +106,7 @@ def get_data(data_fn, cache=True, cache_dir=None, split=0.8, normalise_nominal=T
         #Edit by  Tatevik
         nominal_values = {attr:list(data[1][attr][1]) for attr in data[1].names() if data[1][attr][0] == 'nominal'}
         general_normalizer = Normalization(nominal_values, normalise_nominal=normalise_nominal)
-        training_df = general_normalizer.normalise(df)
+        df = general_normalizer.normalise(df)
 
         # cache normalised data
         if cache and cache_dir is not None:
