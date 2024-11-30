@@ -30,6 +30,7 @@ def get_cluster_centroid(cluster):
     return np.mean(cluster, axis = 0)
 
 def minkowski_distance(x, y, r=2):
+    x = np.expand_dims(x, axis=0)
     return ((abs(x-y)**r).sum(axis = 1))**(1/r)
 
 def cosine_distance(x, y):
@@ -136,4 +137,3 @@ if __name__ == "__main__":
     input, output = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
 
     best_clusters = explore_k_and_seed(input)
-

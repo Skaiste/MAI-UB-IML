@@ -94,8 +94,7 @@ def get_data(data_fn, cache=True, cache_dir=None, normalise_nominal=True):
                 #       training and testing dataframes of the same fold
                 if len(df[name].unique()) == 1 and name == allow_to_remove:
                     df.drop(name, axis='columns', inplace=True)
-                    # remove the same column in the test dataframe
-                    df.drop(name, axis='columns', inplace=True)
+
                 else:
                     numerical_means[name] = np.nanmean(df[name])
             else:
