@@ -30,6 +30,7 @@ def get_cluster_centroid(cluster):
     return np.mean(cluster, axis = 0)
 
 def minkowski_distance(x, y, r=2):
+    x = np.expand_dims(x, axis=0)
     return ((abs(x-y)**r).sum(axis = 1))**(1/r)
 
 def cosine_distance(x, y):
