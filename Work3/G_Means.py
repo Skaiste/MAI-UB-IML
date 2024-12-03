@@ -2,7 +2,14 @@ import os
 import sys
 import pathlib
 import time
+import numpy as np
+import pandas as pd
 from scipy.stats import anderson
+from sklearn.decomposition import PCA
+
+import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
+
 
 # Add the current script's directory to sys.path
 try:
@@ -21,6 +28,7 @@ def initialise_clusters(data, k, distance_fn=minkowski_distance):
     return [data] if k == 1 else kmeans_fit(input, k, distance_fn)
 
 def split_cluster(cluster, max_k_iter=100, distance_fn=minkowski_distance):
+    # splits cluster randomly
     old_centroid = get_cluster_centroid(cluster)
     random_centroid = cluster.loc[np.random.choice(cluster.shape[0])]
     new_centroid = old_centroid - (random_centroid - old_centroid)
@@ -36,6 +44,13 @@ def gaussian_check(data, strictness=4):
     else:
         return False
 
+#%%
+def split_with_pca(cluster):
+    pca = PCA(n_components=2)
+    split_cluster_data = pca.fit_transform(cluster)
+    split_mask = split_cluster_data[:, 0] > 0
+    return [cluster[split_mask], cluster[~split_mask]]
+
 def gmeans_fit(data, k_min=1, k_max=10, max_k_iter=100, distance_fn=minkowski_distance):
     k = k_min
     clusters = initialise_clusters(data, k, distance_fn)
@@ -43,31 +58,62 @@ def gmeans_fit(data, k_min=1, k_max=10, max_k_iter=100, distance_fn=minkowski_di
         print("Current k =", k)
         k_old = k
         _clusters = []
-        for c_idx, cl in enumerate(clusters):
-            if cl.shape[0] <= 1:
-                continue    # skip if there aren't enough data in a cluster
 
-            # split the cluster into two
-            print("splitting clusters")
-            new_clusters = split_cluster(cl, max_k_iter, distance_fn)
-            print("calculate centroids of the split clusters")
-            new_centroids = [get_cluster_centroid(c) for c in new_clusters]
+        with ThreadPoolExecutor() as executor:
+            split_futures = {executor.submit(split_with_pca, cl): c_idx for c_idx, cl in enumerate(clusters) if cl.shape[0] > 1}
+            for future in concurrent.futures.as_completed(split_futures):
+                c_idx = split_futures[future]
+                try:
+                    new_clusters = future.result()
+                except Exception as exc:
+                    print(f'Cluster splitting generated an exception for cluster {c_idx}: {exc}')
+                    continue
 
-            # project clusters along connection axis
-            print("projecting clusters along the connection axis")
-            v = new_centroids[1] - new_centroids[0]
-            projected = np.dot(cl, v) / np.linalg.norm(v)
-            print("gaussian check")
-            accept_null_hypothesis = gaussian_check(projected)
+                # print(f"calculate centroids of the split clusters for cluster {c_idx}")
+                new_centroids = [get_cluster_centroid(c) for c in new_clusters]
 
-            if not accept_null_hypothesis:
-                # if the hypothesis is rejected -> replace the current cluster
-                # with the split clusters
-                _clusters += new_clusters
-                k += 1
-                print(f"adding split cluster {c_idx} into clusters")
-            else:
-                _clusters.append(cl)
+                # project clusters along connection axis
+                # print(f"projecting clusters along the connection axis for cluster {c_idx}")
+                v = new_centroids[1] - new_centroids[0]
+                projected = np.dot(clusters[c_idx], v) / np.linalg.norm(v)
+                # print(f"gaussian check for cluster {c_idx}")
+                accept_null_hypothesis = gaussian_check(projected)
+
+                if not accept_null_hypothesis:
+                    # if the hypothesis is rejected -> replace the current cluster
+                    # with the split clusters
+                    _clusters += new_clusters
+                    k += 1
+                    print(f"adding split cluster {c_idx} into clusters")
+                else:
+                    _clusters.append(clusters[c_idx])
+
+        # for c_idx, cl in enumerate(clusters):
+        #     if cl.shape[0] <= 1:
+        #         continue    # skip if there aren't enough data in a cluster
+        #
+        #     # split the cluster into two
+        #     print("splitting clusters")
+        #     # new_clusters = split_cluster(cl, max_k_iter, distance_fn)
+        #     new_clusters = split_with_pca(cl)
+        #     print("calculate centroids of the split clusters")
+        #     new_centroids = [get_cluster_centroid(c) for c in new_clusters]
+        #
+        #     # project clusters along connection axis
+        #     print("projecting clusters along the connection axis")
+        #     v = new_centroids[1] - new_centroids[0]
+        #     projected = np.dot(cl, v) / np.linalg.norm(v)
+        #     print("gaussian check")
+        #     accept_null_hypothesis = gaussian_check(projected)
+        #
+        #     if not accept_null_hypothesis:
+        #         # if the hypothesis is rejected -> replace the current cluster
+        #         # with the split clusters
+        #         _clusters += new_clusters
+        #         k += 1
+        #         print(f"adding split cluster {c_idx} into clusters")
+        #     else:
+        #         _clusters.append(cl)
 
         # if k doesn't change -> g-means converges
         if k_old == k:
@@ -80,16 +126,61 @@ def gmeans_fit(data, k_min=1, k_max=10, max_k_iter=100, distance_fn=minkowski_di
     return clusters
 
 
+def explore(input, output, max_iter=10, init_seed=42):
+    results = {}
+    distances = {
+        "L1": lambda x, y: minkowski_distance(x, y, r=1),
+        "L2": lambda x, y: minkowski_distance(x, y, r=2),
+        "cosine": cosine_distance,
+    }
+    for distance_name, distance_fn in distances.items():
+        iterations = max_iter
+        random.seed(init_seed)
+        while iterations > 0:
+            seed = random.randint(1, 100000000000)
+            random.seed(seed)
+            print("Running gmeans with distance =", distance_name, " seed=", seed, " iter=", max_iter - iterations)
+            res_name = f"{distance_name}_seed{seed}"
+            input_clusters = gmeans_fit(input, distance_fn=distance_fn)
+
+            labels = pd.DataFrame(columns=['cluster'])
+            for i, cl in enumerate(input_clusters):
+                l = pd.DataFrame({'cluster': [i] * cl.shape[0]}, index=cl.index)
+                labels = pd.concat([labels, l]).sort_index()
+            sli_scores = sk_silhouette_score(input, labels.squeeze())
+            db_score = davies_bouldin_score(input, labels.squeeze())
+            ari_score = adjusted_rand_score(output.squeeze(), labels.squeeze())
+            hmv_score = homogeneity_completeness_v_measure(output.squeeze(), labels.squeeze())
+            sse_score = np.array([sum_of_squared_error(cl) for cl in input_clusters]).mean()
+
+            results[res_name] = {
+                'k': len(input_clusters),
+                'distance': distance_name,
+                'seed': seed,
+                "silhouette": sli_scores,
+                "davies_bouldin": db_score,
+                "adjusted_rand_score": ari_score,
+                "homogeneity_completeness_v_measure": hmv_score,
+                "sum_of_squared_error": sse_score
+            }
+            iterations = -1
+    return results
+
+
 if __name__ == "__main__":
     data_dir = curr_dir / "datasets"
-    dataset_name = "cmc"
 
     cache_dir = curr_dir / "cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    input, output = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
+    output_dir = curr_dir / "results"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    start = time.time()
-    best_clusters = gmeans_fit(input, k_max=100)
-    end = time.time()
-    print(f"G-Means took {end - start} seconds for dataset {dataset_name}")
+
+    datasets = ["cmc", "sick", "mushroom"]
+    for dataset_name in datasets:
+        print("For dataset", dataset_name)
+        input, output = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
+
+        results = explore(input, output)
+        pd.DataFrame(results).T.to_csv(output_dir / f"{dataset_name}_gmeans_results.csv")

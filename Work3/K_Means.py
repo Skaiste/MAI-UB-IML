@@ -1,10 +1,11 @@
 import os
 import sys
-import math
 import random
 import pathlib
 import numpy as np
 import pandas as pd
+from sklearn.metrics import silhouette_score as sk_silhouette_score
+from sklearn.metrics import davies_bouldin_score, adjusted_rand_score, homogeneity_completeness_v_measure
 
 try:
     curr_dir = pathlib.Path(__file__).parent
@@ -66,74 +67,109 @@ def kmeans_fit(X, k, distance_fn=minkowski_distance, max_iter=1000, centroids=No
             return [pd.DataFrame(c) for c in clusters]
         i += 1
 
-# %%
+def sum_of_squared_error(cluster):
+    # Calculate the centroid of the cluster
+    centroid = get_cluster_centroid(cluster)
 
-def silhouette_score(clusters, distance_fn=minkowski_distance):
-    scores = []
-    for ci in clusters:
-        scores.append([])
+    # Compute the squared differences from the centroid
+    squared_diffs = ((cluster - centroid) ** 2).sum(axis=1)
 
-        if len(ci) == 1:
-            scores[-1].append(0)
-            continue
+    # Calculate SSE by summing the squared differences
+    sse = np.sum(squared_diffs)
 
-        for c_idx in ci.index:
-            ci_without_c = ci.drop(index=c_idx)
-            c = ci.loc[c_idx]
-            distances = distance_fn(c, ci_without_c)
-            a = np.mean(distances)
-            b = min(distances)
-            scores[-1].append((b - a) / max(a, b))
-
-    return [np.array(s).mean() for s in scores]
-
-def sum_of_squared_distances_score(clusters, distance_fn=minkowski_distance):
-    scores = []
-    for ci in clusters:
-        centroid = get_cluster_centroid(ci)
-        distances = distance_fn(centroid, ci)
-        scores.append(np.sum(distances**2))
-
-    return scores
+    return sse
 
 # %%
 
-def explore_k_and_seed(input, threshold=0.5, max_iter=100, init_seed=42, distance_fn=minkowski_distance):
-    best_for_k = {}
-    for k in range(2,11):
-        best = None
-        iterations = max_iter
-        print("Running kmeans with k =", k)
-        random.seed(init_seed)
-        while iterations > 0:
-            seed = random.randint(1, 100000000000)
-            random.seed(seed)
-            input_clusters = kmeans_fit(input, k, distance_fn)
-            scores = silhouette_score(input_clusters)
-            if best is None or np.array(scores).mean() > np.array(best['scores']).mean():
-                best = {
-                    'clusters' : input_clusters,
-                    'scores': scores,
+def explore_k_and_seed(input, output, max_iter=10, init_seed=42, max_k=10):
+    results = {}
+    distances = {
+        "L1": lambda x, y: minkowski_distance(x, y, r=1),
+        "L2": lambda x, y: minkowski_distance(x, y, r=2),
+        "cosine": cosine_distance,
+    }
+    for k in range(2, max_k):
+        for distance_name, distance_fn in distances.items():
+            iterations = max_iter
+            print("Running kmeans with k =", k, "and distance =", distance_name)
+            random.seed(init_seed)
+            while iterations > 0:
+                seed = random.randint(1, 100000000000)
+                random.seed(seed)
+                res_name = f"k{k}_{distance_name}_seed{seed}"
+                input_clusters = kmeans_fit(input, k, distance_fn)
+
+                labels = pd.DataFrame(columns=['cluster'])
+                for i, cl in enumerate(input_clusters):
+                    l = pd.DataFrame({'cluster': [i] * cl.shape[0]}, index=cl.index)
+                    labels = pd.concat([labels, l]).sort_index()
+
+                sli_scores = sk_silhouette_score(input, labels.squeeze())
+                db_score = davies_bouldin_score(input, labels.squeeze())
+                ari_score = adjusted_rand_score(output.squeeze(), labels.squeeze())
+                hmv_score = homogeneity_completeness_v_measure(output.squeeze(), labels.squeeze())
+                sse_score = np.array([sum_of_squared_error(cl) for cl in input_clusters]).mean()
+
+                results[res_name] = {
+                    'k': k,
+                    'distance': distance_name,
                     'seed': seed,
-                    'k': k
+                    "silhouette": sli_scores,
+                    "davies_bouldin": db_score,
+                    "adjusted_rand_score": ari_score,
+                    "homogeneity_completeness_v_measure": hmv_score,
+                    "sum_of_squared_error": sse_score,
                 }
 
-            if np.array(scores).mean() > threshold:
-                break
+                print(max_iter - iterations, seed, np.array(sli_scores).mean(), np.array(db_score).mean())
 
-            print(max_iter - iterations, best['seed'], np.array(best['scores']).mean(), seed, np.array(scores).mean())
-
-            iterations -= 1
-        best_for_k[k] = best
-    return best_for_k
+                iterations -= 1
+    return results
 
 if __name__ == "__main__":
     data_dir = curr_dir / "datasets"
-    dataset_name = "mushroom"
 
     cache_dir = curr_dir / "cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    input, output = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
+    output_dir = curr_dir / "results"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    best_clusters = explore_k_and_seed(input)
+    datasets = ["cmc", "sick", "mushroom"]
+    datasets = ["sick", "mushroom"]
+    for dataset_name in datasets:
+        print("For dataset", dataset_name)
+        input, output = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
+
+        results = explore_k_and_seed(input, output)
+        pd.DataFrame(results).T.to_csv(output_dir / f"{dataset_name}_kmeans_results.csv")
+
+
+# %%
+# if __name__ == "__main__":
+#     data_dir = curr_dir / "datasets"
+#
+#     cache_dir = curr_dir / "cache"
+#     cache_dir.mkdir(parents=True, exist_ok=True)
+#
+#     output_dir = curr_dir / "results"
+#     output_dir.mkdir(parents=True, exist_ok=True)
+#
+#     dataset_name = "cmc"
+#     input, output = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
+#
+#     random.seed(93904476587)
+#     seed = random.randint(1, 100000000000)
+#     random.seed(seed)
+#     input_clusters = kmeans_fit(input, 9, lambda x, y: minkowski_distance(x, y, r=1))
+#
+#     labels = pd.DataFrame(columns=['cluster'])
+#     for i, cl in enumerate(input_clusters):
+#         l = pd.DataFrame({'cluster': [i] * cl.shape[0]}, index=cl.index)
+#         labels = pd.concat([labels, l]).sort_index()
+#
+#     sli_scores = sk_silhouette_score(input, labels.squeeze())
+#     db_score = davies_bouldin_score(input, labels.squeeze())
+#     ari_score = adjusted_rand_score(output.squeeze(), labels.squeeze())
+#     hmv_score = homogeneity_completeness_v_measure(output.squeeze(), labels.squeeze())
+#     sse_score = np.array([sum_of_squared_error(cl) for cl in input_clusters]).mean()
