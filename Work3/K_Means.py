@@ -81,7 +81,7 @@ def sum_of_squared_error(cluster):
 
 # %%
 
-def explore_k_and_seed(input, output, max_iter=10, init_seed=42, max_k=10):
+def explore_k_and_seed(input, true_labels, seeds=(42,), max_k=10):
     results = {}
     distances = {
         "L1": lambda x, y: minkowski_distance(x, y, r=1),
@@ -90,11 +90,8 @@ def explore_k_and_seed(input, output, max_iter=10, init_seed=42, max_k=10):
     }
     for k in range(2, max_k):
         for distance_name, distance_fn in distances.items():
-            iterations = max_iter
             print("Running kmeans with k =", k, "and distance =", distance_name)
-            random.seed(init_seed)
-            while iterations > 0:
-                seed = random.randint(1, 100000000000)
+            for idx, seed in enumerate(seeds):
                 random.seed(seed)
                 res_name = f"k{k}_{distance_name}_seed{seed}"
                 input_clusters = kmeans_fit(input, k, distance_fn)
@@ -106,8 +103,8 @@ def explore_k_and_seed(input, output, max_iter=10, init_seed=42, max_k=10):
 
                 sli_scores = sk_silhouette_score(input, labels.squeeze())
                 db_score = davies_bouldin_score(input, labels.squeeze())
-                ari_score = adjusted_rand_score(output.squeeze(), labels.squeeze())
-                hmv_score = homogeneity_completeness_v_measure(output.squeeze(), labels.squeeze())
+                ari_score = adjusted_rand_score(true_labels.squeeze(), labels.squeeze())
+                hmv_score = homogeneity_completeness_v_measure(true_labels.squeeze(), labels.squeeze())
                 sse_score = np.array([sum_of_squared_error(cl) for cl in input_clusters]).mean()
 
                 results[res_name] = {
@@ -121,9 +118,7 @@ def explore_k_and_seed(input, output, max_iter=10, init_seed=42, max_k=10):
                     "sum_of_squared_error": sse_score,
                 }
 
-                print(max_iter - iterations, seed, np.array(sli_scores).mean(), np.array(db_score).mean())
-
-                iterations -= 1
+                print(idx, seed, np.array(sli_scores).mean(), np.array(db_score).mean())
     return results
 
 if __name__ == "__main__":
@@ -135,13 +130,14 @@ if __name__ == "__main__":
     output_dir = curr_dir / "results"
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    seeds = list(range(20, 70, 5))
+
     datasets = ["cmc", "sick", "mushroom"]
-    datasets = ["sick", "mushroom"]
     for dataset_name in datasets:
         print("For dataset", dataset_name)
-        input, output = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
+        input, true_labels = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
 
-        results = explore_k_and_seed(input, output)
+        results = explore_k_and_seed(input, true_labels, seeds=seeds)
         pd.DataFrame(results).T.to_csv(output_dir / f"{dataset_name}_kmeans_results.csv")
 
 
