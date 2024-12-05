@@ -32,36 +32,32 @@ def spectral_clustering_fit(X, n_clusters, affinity='nearest_neighbors'):
     return cluster_labels
 
 
-def explore_k_and_seed_spectral(input, true_labels, seeds=(42,), max_k=10):
+def explore_k_spectral(input, true_labels, max_k=10):
     results = {}
     affinities = ['nearest_neighbors', 'rbf'] 
 
     for k in range(2, max_k):
         for affinity in affinities:
             print(f"Running Spectral Clustering with k = {k} and affinity = {affinity}")
-            for idx, seed in enumerate(seeds):
-                np.random.seed(seed)
-                res_name = f"sc_k{k}_{affinity}_seed{seed}"
+            res_name = f"sc_k{k}_{affinity}"
                 
-                labels = spectral_clustering_fit(input, n_clusters=k, affinity=affinity)
+            labels = spectral_clustering_fit(input, n_clusters=k, affinity=affinity)
                 
                 # evaluation metrics
-                sli_scores = silhouette_score(input, labels)
-                db_score = davies_bouldin_score(input, labels)
-                ari_score = adjusted_rand_score(true_labels.squeeze(), labels)
-                hmv_score = homogeneity_completeness_v_measure(true_labels.squeeze(), labels)
+            sli_scores = silhouette_score(input, labels)
+            db_score = davies_bouldin_score(input, labels)
+            ari_score = adjusted_rand_score(true_labels.squeeze(), labels)
+            hmv_score = homogeneity_completeness_v_measure(true_labels.squeeze(), labels)
 
-                results[res_name] = {
+            results[res_name] = {
                     'k': k,
                     'affinity': affinity,
-                    'seed': seed,
                     "silhouette": sli_scores,
                     "davies_bouldin": db_score,
                     "adjusted_rand_score": ari_score,
                     "homogeneity_completeness_v_measure": hmv_score,
-                }
-
-                print(idx, seed, sli_scores, db_score)
+            }
+            print(f"Completed: {res_name}, Silhouette: {sli_scores}, Davies-Bouldin: {db_score}")
     return results
 
 if __name__ == "__main__":
@@ -73,12 +69,11 @@ if __name__ == "__main__":
     output_dir = curr_dir / "results"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    seeds = list(range(20, 70, 5))
-
+  
     datasets = ["cmc", "sick", "mushroom"]
     for dataset_name in datasets:
         print("For dataset", dataset_name)
         input, true_labels = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
 
-        spectral_results = explore_k_and_seed_spectral(input, true_labels, seeds=seeds)
+        spectral_results = explore_k_spectral(input, true_labels)
         pd.DataFrame(spectral_results).T.to_csv(output_dir / f"{dataset_name}_spectral_results.csv")

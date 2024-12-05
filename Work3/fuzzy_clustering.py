@@ -77,8 +77,6 @@ labels = np.argmax(membership_matrix, axis=1)
 silhouette_avg = silhouette_score(scaled_data, labels)
 davies_bouldin = davies_bouldin_score(scaled_data, labels)
 
-print(f"Silhouette Score: {silhouette_avg}")
-print(f"Davies-Bouldin Index: {davies_bouldin}")
 
 plt.scatter(scaled_data[:, 0], scaled_data[:, 1], c=labels, cmap="viridis", s=50)
 plt.scatter(centers[:, 0], centers[:, 1], c="red", marker="X", s=200, label="Centers")
