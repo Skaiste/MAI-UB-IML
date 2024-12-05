@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from data_parser import get_data
+from sklearn.metrics import silhouette_score, davies_bouldin_score
 
 try:
     curr_dir = pathlib.Path(__file__).parent
@@ -69,8 +70,15 @@ print("Fuzzy C-Means Clustering")
 n_clusters = 3
 centers, membership_matrix = fuzzy_c_means(scaled_data, n_clusters=n_clusters, m=2.0)
 
-# clusters based on maximum membership
+# clusters based on maximum membership / cluster crips
 labels = np.argmax(membership_matrix, axis=1)
+
+# evaluate crisp clusters
+silhouette_avg = silhouette_score(scaled_data, labels)
+davies_bouldin = davies_bouldin_score(scaled_data, labels)
+
+print(f"Silhouette Score: {silhouette_avg}")
+print(f"Davies-Bouldin Index: {davies_bouldin}")
 
 plt.scatter(scaled_data[:, 0], scaled_data[:, 1], c=labels, cmap="viridis", s=50)
 plt.scatter(centers[:, 0], centers[:, 1], c="red", marker="X", s=200, label="Centers")
