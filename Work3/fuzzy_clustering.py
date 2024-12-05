@@ -105,5 +105,5 @@ if __name__ == "__main__":
         input_data, true_labels = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
 
         # clustering for different k
-        fuzzy_results = explore_k_fuzzy(input_data, true_labels, max_k=10)
+        fuzzy_results = explore_k_fuzzy(input_data, true_labels)
         pd.DataFrame(fuzzy_results).T.to_csv(output_dir / f"{dataset_name}_fuzzy_results.csv")
