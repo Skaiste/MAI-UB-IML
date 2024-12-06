@@ -25,23 +25,60 @@ def load_data(data_dir, dataset_name, cache, cache_dir):
     return get_data(dataset, cache_dir=cache_dir, cache=cache, normalise_nominal=normalise_nominal)
 
 
-def spectral_clustering_fit(X, n_clusters, affinity='nearest_neighbors'):
+def spectral_clustering_fit(X, n_clusters, affinity='nearest_neighbors', gamma=None):
 
-    clustering_model = SpectralClustering(n_clusters=n_clusters, affinity=affinity, random_state=42, n_neighbors=10)
+    # clustering_model = SpectralClustering(n_clusters=n_clusters, affinity=affinity, random_state=42, n_neighbors=10 if affinity == 'nearest_neighbors' else None, gamma=gamma if affinity == 'rbf' else None)
+    if affinity == 'rbf':
+        clustering_model = SpectralClustering(
+            n_clusters=n_clusters,
+            affinity=affinity,
+            random_state=42,
+            gamma=gamma
+        )
+    else:
+        clustering_model = SpectralClustering(
+            n_clusters=n_clusters,
+            affinity=affinity,
+            random_state=42,
+            n_neighbors=10
+        )
     cluster_labels = clustering_model.fit_predict(X)
     return cluster_labels
 
 
-def explore_k_spectral(input, true_labels, max_k=10):
+def explore_k_spectral(input, true_labels, max_k=10, gamma_values=None):
     results = {}
     affinities = ['nearest_neighbors', 'rbf'] 
+    gamma_values = gamma_values or [0.1, 1, 10]
 
     for k in range(2, max_k):
         for affinity in affinities:
-            print(f"Running Spectral Clustering with k = {k} and affinity = {affinity}")
-            res_name = f"sc_k{k}_{affinity}"
+            if affinity == 'rbf':
+                for gamma in gamma_values:
+                    print(f"Running Spectral Clustering with k = {k} and affinity = {affinity}, gamma = {gamma} ")
+                    res_name =  f"sc_k{k}_{affinity}_gamma{gamma}"
                 
-            labels = spectral_clustering_fit(input, n_clusters=k, affinity=affinity)
+             # evaluation metrics
+                    sli_scores = silhouette_score(input, labels)
+                    db_score = davies_bouldin_score(input, labels)
+                    ari_score = adjusted_rand_score(true_labels.squeeze(), labels)
+                    hmv_score = homogeneity_completeness_v_measure(true_labels.squeeze(), labels)
+
+                    results[res_name] = {
+                        'k': k,
+                        'affinity': affinity,
+                        'gamma': gamma,
+                        "silhouette": sli_scores,
+                        "davies_bouldin": db_score,
+                        "adjusted_rand_score": ari_score,
+                        "homogeneity_completeness_v_measure": hmv_score,
+                    }
+                    print(np.array(sli_scores).mean(), np.array(db_score).mean())
+            else:
+                print(f"Running Spectral Clustering with k = {k} and affinity = {affinity}")
+                res_name = f"sc_k{k}_{affinity}"
+                
+                labels = spectral_clustering_fit(input, n_clusters=k, affinity=affinity, gamma=None)
                 
                 # evaluation metrics
             sli_scores = silhouette_score(input, labels)
@@ -57,7 +94,7 @@ def explore_k_spectral(input, true_labels, max_k=10):
                     "adjusted_rand_score": ari_score,
                     "homogeneity_completeness_v_measure": hmv_score,
             }
-            print(f"Completed: {res_name}, Silhouette: {sli_scores}, Davies-Bouldin: {db_score}")
+            print(np.array(sli_scores).mean(), np.array(db_score).mean())
     return results
 
 if __name__ == "__main__":
