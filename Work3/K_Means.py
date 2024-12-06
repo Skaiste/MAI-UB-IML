@@ -70,10 +70,8 @@ def kmeans_fit(X, k, distance_fn=minkowski_distance, max_iter=1000, centroids=No
 def sum_of_squared_error(cluster):
     # Calculate the centroid of the cluster
     centroid = get_cluster_centroid(cluster)
-
     # Compute the squared differences from the centroid
     squared_diffs = ((cluster - centroid) ** 2).sum(axis=1)
-
     # Calculate SSE by summing the squared differences
     sse = np.sum(squared_diffs)
 
@@ -139,33 +137,3 @@ if __name__ == "__main__":
 
         results = explore_k_and_seed(input, true_labels, seeds=seeds)
         pd.DataFrame(results).T.to_csv(output_dir / f"{dataset_name}_kmeans_results.csv")
-
-
-# %%
-# if __name__ == "__main__":
-#     data_dir = curr_dir / "datasets"
-#
-#     cache_dir = curr_dir / "cache"
-#     cache_dir.mkdir(parents=True, exist_ok=True)
-#
-#     output_dir = curr_dir / "results"
-#     output_dir.mkdir(parents=True, exist_ok=True)
-#
-#     dataset_name = "cmc"
-#     input, output = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
-#
-#     random.seed(93904476587)
-#     seed = random.randint(1, 100000000000)
-#     random.seed(seed)
-#     input_clusters = kmeans_fit(input, 9, lambda x, y: minkowski_distance(x, y, r=1))
-#
-#     labels = pd.DataFrame(columns=['cluster'])
-#     for i, cl in enumerate(input_clusters):
-#         l = pd.DataFrame({'cluster': [i] * cl.shape[0]}, index=cl.index)
-#         labels = pd.concat([labels, l]).sort_index()
-#
-#     sli_scores = sk_silhouette_score(input, labels.squeeze())
-#     db_score = davies_bouldin_score(input, labels.squeeze())
-#     ari_score = adjusted_rand_score(output.squeeze(), labels.squeeze())
-#     hmv_score = homogeneity_completeness_v_measure(output.squeeze(), labels.squeeze())
-#     sse_score = np.array([sum_of_squared_error(cl) for cl in input_clusters]).mean()
