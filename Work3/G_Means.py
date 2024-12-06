@@ -51,7 +51,7 @@ def split_with_pca(cluster):
     split_mask = split_cluster_data[:, 0] > 0
     return [cluster[split_mask], cluster[~split_mask]]
 
-def gmeans_fit(data, k_min=1, k_max=10, max_k_iter=100, distance_fn=minkowski_distance):
+def gmeans_fit(data, k_min=1, k_max=20, max_k_iter=100, distance_fn=minkowski_distance):
     k = k_min
     clusters = initialise_clusters(data, k, distance_fn)
     while k < k_max:
@@ -88,33 +88,6 @@ def gmeans_fit(data, k_min=1, k_max=10, max_k_iter=100, distance_fn=minkowski_di
                 else:
                     _clusters.append(clusters[c_idx])
 
-        # for c_idx, cl in enumerate(clusters):
-        #     if cl.shape[0] <= 1:
-        #         continue    # skip if there aren't enough data in a cluster
-        #
-        #     # split the cluster into two
-        #     print("splitting clusters")
-        #     # new_clusters = split_cluster(cl, max_k_iter, distance_fn)
-        #     new_clusters = split_with_pca(cl)
-        #     print("calculate centroids of the split clusters")
-        #     new_centroids = [get_cluster_centroid(c) for c in new_clusters]
-        #
-        #     # project clusters along connection axis
-        #     print("projecting clusters along the connection axis")
-        #     v = new_centroids[1] - new_centroids[0]
-        #     projected = np.dot(cl, v) / np.linalg.norm(v)
-        #     print("gaussian check")
-        #     accept_null_hypothesis = gaussian_check(projected)
-        #
-        #     if not accept_null_hypothesis:
-        #         # if the hypothesis is rejected -> replace the current cluster
-        #         # with the split clusters
-        #         _clusters += new_clusters
-        #         k += 1
-        #         print(f"adding split cluster {c_idx} into clusters")
-        #     else:
-        #         _clusters.append(cl)
-
         # if k doesn't change -> g-means converges
         if k_old == k:
             clusters = _clusters
@@ -134,32 +107,32 @@ def explore(input, true_labels, seeds=(42,)):
         "cosine": cosine_distance,
     }
     for distance_name, distance_fn in distances.items():
-        for idx, seed in enumerate(seeds):
-            random.seed(seed)
-            print("Running gmeans with distance =", distance_name, "seed =", seed, "iter =", idx)
-            res_name = f"{distance_name}_seed{seed}"
-            input_clusters = gmeans_fit(input, distance_fn=distance_fn)
+        # for idx, seed in enumerate(seeds):
+        #     random.seed(seed)
+        print("Running gmeans with distance =", distance_name)#, "seed =", seed, "iter =", idx)
+        res_name = f"{distance_name}"#_seed{seed}"
+        input_clusters = gmeans_fit(input, distance_fn=distance_fn)
 
-            labels = pd.DataFrame(columns=['cluster'])
-            for i, cl in enumerate(input_clusters):
-                l = pd.DataFrame({'cluster': [i] * cl.shape[0]}, index=cl.index)
-                labels = pd.concat([labels, l]).sort_index()
-            sli_scores = sk_silhouette_score(input, labels.squeeze())
-            db_score = davies_bouldin_score(input, labels.squeeze())
-            ari_score = adjusted_rand_score(true_labels.squeeze(), labels.squeeze())
-            hmv_score = homogeneity_completeness_v_measure(true_labels.squeeze(), labels.squeeze())
-            sse_score = np.array([sum_of_squared_error(cl) for cl in input_clusters]).mean()
+        labels = pd.DataFrame(columns=['cluster'])
+        for i, cl in enumerate(input_clusters):
+            l = pd.DataFrame({'cluster': [i] * cl.shape[0]}, index=cl.index)
+            labels = pd.concat([labels, l]).sort_index()
+        sli_scores = sk_silhouette_score(input, labels.squeeze())
+        db_score = davies_bouldin_score(input, labels.squeeze())
+        ari_score = adjusted_rand_score(true_labels.squeeze(), labels.squeeze())
+        hmv_score = homogeneity_completeness_v_measure(true_labels.squeeze(), labels.squeeze())
+        sse_score = np.array([sum_of_squared_error(cl) for cl in input_clusters]).mean()
 
-            results[res_name] = {
-                'k': len(input_clusters),
-                'distance': distance_name,
-                'seed': seed,
-                "silhouette": sli_scores,
-                "davies_bouldin": db_score,
-                "adjusted_rand_score": ari_score,
-                "homogeneity_completeness_v_measure": hmv_score,
-                "sum_of_squared_error": sse_score
-            }
+        results[res_name] = {
+            'k': len(input_clusters),
+            'distance': distance_name,
+            # 'seed': seed,
+            "silhouette": sli_scores,
+            "davies_bouldin": db_score,
+            "adjusted_rand_score": ari_score,
+            "homogeneity_completeness_v_measure": hmv_score,
+            "sum_of_squared_error": sse_score
+        }
     return results
 
 

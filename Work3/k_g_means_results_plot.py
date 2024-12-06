@@ -99,23 +99,23 @@ plt.show()
 
 # %%
 # Plotting K means k selection based on elbow method with all seeds ----- UNUSED
-fig, axs = plt.subplots(1, len(results_k_means), figsize=(len(results_k_means)*6, 6))
-for i, (dataset, df) in enumerate(results_k_means.items()):
-    grouped = df.groupby('seed')
-    for seed, group in grouped:
-        axs[i].plot(group['k'].values, group['sum_of_squared_error'].values, label=f"Seed {seed}")
-    axs[i].set_xlabel("k")
-    axs[i].set_ylabel("Sum of Squared Error")
-    axs[i].set_title(f"{dataset} dataset: K vs Sum of Squared Error for Different Seeds")
-    axs[i].legend()
-    axs[i].grid(True)
-plt.tight_layout()
-plt.show()
+# fig, axs = plt.subplots(1, len(results_k_means), figsize=(len(results_k_means)*6, 6))
+# for i, (dataset, df) in enumerate(results_k_means.items()):
+#     grouped = df.groupby('seed')
+#     for seed, group in grouped:
+#         axs[i].plot(group['k'].values, group['sum_of_squared_error'].values, label=f"Seed {seed}")
+#     axs[i].set_xlabel("k")
+#     axs[i].set_ylabel("Sum of Squared Error")
+#     axs[i].set_title(f"{dataset} dataset: K vs Sum of Squared Error for Different Seeds")
+#     axs[i].legend()
+#     axs[i].grid(True)
+# plt.tight_layout()
+# plt.show()
 
 # %%
 # Plotting K-means distance selection based on selected k value
 best_k = {"cmc": 4, "sick": 4, "mushroom": 5}
-fig, axs = plt.subplots(4, len(results_k_means), figsize=(len(results_k_means)*3.5, 7))
+fig, axs = plt.subplots(4, len(results_k_means), figsize=(len(results_k_means)*4.5, 7))
 for i, (dataset, df) in enumerate(results_k_means.items()):
     selected_rows = df[df['k'] == best_k[dataset]]
     values = pd.DataFrame(columns=df.columns)
@@ -137,8 +137,8 @@ for i, (dataset, df) in enumerate(results_k_means.items()):
     axs[1,i].set_title(f"{dataset}: Davies Bouldin score for distances")
     axs[2,i].set_ylabel("Adjusted Rand score")
     axs[2,i].set_title(f"{dataset}: Adjusted Rand score for distances")
-    axs[3,i].set_ylabel("V-Measure")
-    axs[3,i].set_title(f"{dataset}: V-Measure for distances")
+    axs[3,i].set_ylabel("HC score")
+    axs[3,i].set_title(f"{dataset}: HC score for distances")
     for j in range(4):
         axs[j,i].set_xlabel("Distance")
         axs[j,i].grid(True)
@@ -153,69 +153,70 @@ plt.show()
 # %%
 # Plotting K-means distance selection based on selected k value ----- UNUSED
 best_k = {"cmc": 4, "sick": 4, "mushroom": 5}
-fig, axs = plt.subplots(2, len(results_k_means), figsize=(len(results_k_means)*5, 5))
-for i, (dataset, df) in enumerate(results_k_means.items()):
-    selected_rows = df[df['k'] == best_k[dataset]]
-    grouped = selected_rows.groupby('distance')
-    for distance, group in grouped:
-        mean_silhouette = group['silhouette'].mean()
-        std_silhouette = group['silhouette'].std()
-        axs[0,i].errorbar(distance, mean_silhouette, yerr=std_silhouette, fmt='o', label=f"{distance} Silhouette")
-        mean_davies = group['davies_bouldin'].mean()
-        std_davies = group['davies_bouldin'].std()
-        axs[1,i].errorbar(distance, mean_davies, yerr=std_davies, fmt='o', label=f"{distance} Davies Bouldin")
-
-    axs[0,i].set_ylabel("Silhouette score")
-    axs[0,i].set_title(f"{dataset} dataset: Mean Silhouette by Distance")
-    axs[1,i].set_ylabel("Davies Bouldin score")
-    axs[1,i].set_title(f"{dataset} dataset: Mean Davies Bouldin by Distance")
-    for j in range(2):
-        axs[j,i].set_xlabel("Distance")
-        axs[j,i].grid(True)
-plt.tight_layout()
-plt.show()
+# fig, axs = plt.subplots(2, len(results_k_means), figsize=(len(results_k_means)*5, 5))
+# for i, (dataset, df) in enumerate(results_k_means.items()):
+#     selected_rows = df[df['k'] == best_k[dataset]]
+#     grouped = selected_rows.groupby('distance')
+#     for distance, group in grouped:
+#         mean_silhouette = group['silhouette'].mean()
+#         std_silhouette = group['silhouette'].std()
+#         axs[0,i].errorbar(distance, mean_silhouette, yerr=std_silhouette, fmt='o', label=f"{distance} Silhouette")
+#         mean_davies = group['davies_bouldin'].mean()
+#         std_davies = group['davies_bouldin'].std()
+#         axs[1,i].errorbar(distance, mean_davies, yerr=std_davies, fmt='o', label=f"{distance} Davies Bouldin")
+#
+#     axs[0,i].set_ylabel("Silhouette score")
+#     axs[0,i].set_title(f"{dataset} dataset: Mean Silhouette by Distance")
+#     axs[1,i].set_ylabel("Davies Bouldin score")
+#     axs[1,i].set_title(f"{dataset} dataset: Mean Davies Bouldin by Distance")
+#     for j in range(2):
+#         axs[j,i].set_xlabel("Distance")
+#         axs[j,i].grid(True)
+# plt.tight_layout()
+# plt.show()
 
 # %%
 # Plotting K-means seed selection based on SSE ----- UNUSED
-best_distance = {"cmc":"cosine", "sick": "L1", "mushroom": "cosine"}
-fig, axs = plt.subplots(1, len(results_k_means), figsize=(len(results_k_means)*5, 5))
-for i, (dataset, df) in enumerate(results_k_means.items()):
-    rows = df[df['k'] == best_k[dataset]]
-    grouped = rows.groupby('distance')
-    for distance, group in grouped:
-        axs[i].plot(group['seed'].values, group['sum_of_squared_error'].values, label=f"{distance} distance")
-    axs[i].set_xlabel("Seed")
-    axs[i].set_ylabel("Sum of Squared Error")
-    axs[i].set_title(f"{dataset} dataset: SSE for different Seeds and Distances")
-    axs[i].legend()
-    axs[i].grid(True)
-
-    table_values = [np.round(group['sum_of_squared_error'].values, 0).astype(int) for d, group in grouped]
-    table = axs[i].table(cellText=table_values,
-                         colLabels=rows['seed'].unique(),
-                         rowLabels=rows["distance"].unique(),
-                         loc='bottom',
-                         cellLoc='center',
-                         bbox=[0.0, -0.35, 1.0, 0.2])
-
-    table.auto_set_font_size(False)
-    table.set_fontsize(7)
-
-plt.tight_layout()
-plt.show()
+# best_distance = {"cmc":"cosine", "sick": "L1", "mushroom": "cosine"}
+# fig, axs = plt.subplots(1, len(results_k_means), figsize=(len(results_k_means)*5, 5))
+# for i, (dataset, df) in enumerate(results_k_means.items()):
+#     rows = df[df['k'] == best_k[dataset]]
+#     grouped = rows.groupby('distance')
+#     for distance, group in grouped:
+#         axs[i].plot(group['seed'].values, group['sum_of_squared_error'].values, label=f"{distance} distance")
+#     axs[i].set_xlabel("Seed")
+#     axs[i].set_ylabel("Sum of Squared Error")
+#     axs[i].set_title(f"{dataset} dataset: SSE for different Seeds and Distances")
+#     axs[i].legend()
+#     axs[i].grid(True)
+#
+#     table_values = [np.round(group['sum_of_squared_error'].values, 0).astype(int) for d, group in grouped]
+#     table = axs[i].table(cellText=table_values,
+#                          colLabels=rows['seed'].unique(),
+#                          rowLabels=rows["distance"].unique(),
+#                          loc='bottom',
+#                          cellLoc='center',
+#                          bbox=[0.0, -0.35, 1.0, 0.2])
+#
+#     table.auto_set_font_size(False)
+#     table.set_fontsize(7)
+#
+# plt.tight_layout()
+# plt.show()
 
 
 # %%
 # Plotting G means
-fig, axs = plt.subplots(4, len(results_k_means), figsize=(len(results_k_means)*4.5, 7))
+fig, axs = plt.subplots(4, len(results_g_means), figsize=(len(results_g_means)*4.5, 7))
 for i, (dataset, df) in enumerate(results_g_means.items()):
     # remove the seed, since no matter the seed, g-means produces the same result
-    df = df[df["seed"] == 20.0].drop("seed", axis=1)
+    # df = df[df["seed"] == 20.0].drop("seed", axis=1)
     axs[0,i].scatter(df['distance'].values, df['silhouette'].values)
     axs[1,i].scatter(df['distance'].values, df['davies_bouldin'].values)
     axs[2,i].scatter(df['distance'].values, df['adjusted_rand_score'].values)
     df['v_measure'] = [[float(f) for f in float_pattern.findall(v)][2] for v in df['homogeneity_completeness_v_measure'].values]
     axs[3,i].scatter(df['distance'].values, df['v_measure'].values)
+    print(dataset)
     print(df[['distance', 'silhouette', 'davies_bouldin', 'adjusted_rand_score', 'v_measure']])
 
     axs[0,i].set_ylabel("Silhouette")
@@ -224,8 +225,8 @@ for i, (dataset, df) in enumerate(results_g_means.items()):
     axs[1,i].set_title(f"{dataset}: Davies Bouldin score for distances")
     axs[2,i].set_ylabel("Adjusted Rand score")
     axs[2,i].set_title(f"{dataset}: Adjusted Rand score for distances")
-    axs[3,i].set_ylabel("V-Measure")
-    axs[3,i].set_title(f"{dataset}: V-Measure for distances")
+    axs[3,i].set_ylabel("HC score")
+    axs[3,i].set_title(f"{dataset}: HC score for distances")
     for j in range(4):
         axs[j,i].set_xlabel("Distance")
         axs[j,i].grid(True)
@@ -242,7 +243,7 @@ plt.show()
 
 # %%
 for i, (dataset, df) in enumerate(results_g_means.items()):
-    df = df[df["seed"] == 20.0].drop("seed", axis=1)
+    # df = df[df["seed"] == 20.0].drop("seed", axis=1)
     plt.scatter(df['distance'].values, df['k'].values, label=dataset)
 
 plt.legend()
