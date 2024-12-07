@@ -1,115 +1,147 @@
 import os
-import sys
 import pathlib
 import pandas as pd
-import numpy as np
-from sklearn.metrics import silhouette_score, davies_bouldin_score, adjusted_rand_score, homogeneity_completeness_v_measure
+import matplotlib.pyplot as plt
 
+# Setup paths
 try:
     curr_dir = pathlib.Path(__file__).parent
 except:
     curr_dir = pathlib.Path(os.getcwd()) / "Work3"
-sys.path.append(str(curr_dir))
+results_dir = curr_dir / "results"
 
-from data_parser import get_data
+datasets = ["cmc", "sick", "mushroom"]
+metrics = ["silhouette", "davies_bouldin", "adjusted_rand_score", "homogeneity", "completeness", "v_measure"]
+metric_labels = {
+    "silhouette": "Silhouette",
+    "davies_bouldin": "Davies-Bouldin",
+    "adjusted_rand_score": "Adjusted Rand",
+    "homogeneity": "Homogeneity",
+    "completeness": "Completeness",
+    "v_measure": "V-Measure",
+}
 
-def load_data(data_dir, dataset_name, cache, cache_dir):
-    dataset = data_dir / f"{dataset_name}.arff"
-    if not dataset.is_file():
-        raise Exception(f"Dataset {dataset} could not be found.")
-    print("Loading data")
-    normalise_nominal = True if dataset_name != "cmc" else False
-    return get_data(dataset, cache_dir=cache_dir, cache=cache, normalise_nominal=normalise_nominal)
+# Step 1: Best Number of Clusters
+print("Step 1: Plotting Best Number of Clusters...")
 
-def matrix(n_samples, n_clusters):
-    membership_matrix = np.random.rand(n_samples, n_clusters)
-    membership_matrix = membership_matrix / np.sum(membership_matrix, axis=1, keepdims=True)  # normalize rows
-    return membership_matrix
+# Combined Plot for Best Number of Clusters
+fig_cluster, axs_cluster = plt.subplots(len(metrics), len(datasets), figsize=(len(datasets) * 6, len(metrics) * 6))
 
-def cluster_centers(X, U, m):
-    U_m = U ** m  
-    cluster_centers = (U_m.T @ X) / np.sum(U_m.T, axis=1, keepdims=True)
-    return cluster_centers
+cluster_results = {}
+for row, metric in enumerate(metrics):
+    for col, dataset in enumerate(datasets):
+        try:
+            file_path = results_dir / f"{dataset}_fuzzy_results.csv"
+            df = pd.read_csv(file_path)
 
-def update_matrix(X, centers, m):
-    distances = np.linalg.norm(X[:, np.newaxis] - centers, axis=2)  # distances to cluster centers
-    distances = np.fmax(distances, np.finfo(np.float64).eps)  # avoid division by zero
-    reciprocal_distances = 1.0 / distances
-    U_new = reciprocal_distances / np.sum(reciprocal_distances, axis=1, keepdims=True)  # normalize
-    return U_new
+            # Rename 'k' to 'cluster_number' internally for consistency
+            df.rename(columns={"k": "cluster_number"}, inplace=True)
 
-def fuzzy_c_means(X, n_clusters=3, m=2.0, max_iter=150, error=1e-5):
-    # convert input to numpy array if it's a dataframe
-    if isinstance(X, pd.DataFrame):
-        X = X.to_numpy()
+            # Save results for elimination
+            if dataset not in cluster_results:
+                cluster_results[dataset] = df
 
-    n_samples, n_features = X.shape
-    U = matrix(n_samples, n_clusters)  
-    centers = cluster_centers(X, U, m)  
+            # Plot metric vs cluster number
+            x = df['cluster_number']
+            y = df[metric]
 
-    for iteration in range(max_iter):
-        U_new = update_matrix(X, centers, m)
-        new_centers = cluster_centers(X, U_new, m)
+            ax = axs_cluster[row, col]
+            ax.scatter(x, y, label=f'{metric}', color='blue')
+            ax.set_title(f'{dataset}: {metric} for Cluster Numbers')
+            ax.set_xlabel('Cluster Number')
+            ax.set_ylabel(metric_labels[metric])
+            ax.grid(True)
+        except Exception as e:
+            print(f"Error processing {dataset} for {metric}: {e}")
 
-        if np.linalg.norm(new_centers - centers) < error:  # convergence based on centroids
-            return new_centers, U_new  
+plt.tight_layout()
+plt.show()
 
-        centers = new_centers
-        U = U_new
+# Step 2: Best Degree of Fuzziness (m)
+print("Step 2: Plotting Best Degree of Fuzziness (m)...")
+m_values = [1.5, 2.0, 2.5]  # Example values of m
 
-    return centers, U
+# Combined Plot for Best Degree of Fuzziness
+fig_fuzziness, axs_fuzziness = plt.subplots(len(metrics), len(datasets), figsize=(len(datasets) * 6, len(metrics) * 6))
 
-def explore_k_fuzzy(input_data, true_labels, max_k=10, m=2.0):
-    results = {}
+fuzziness_results = {}
+for row, metric in enumerate(metrics):
+    for col, dataset in enumerate(datasets):
+        try:
+            file_path = results_dir / f"{dataset}_fuzzy_results.csv"
+            df = pd.read_csv(file_path)
 
-    # convert input to NumPy array if necessary
-    if isinstance(input_data, pd.DataFrame):
-        input_data = input_data.to_numpy()
+            # Filter only rows matching m_values
+            df_fuzziness = df[df['m'].isin(m_values)]
 
-    for k in range(2, max_k):
-        print(f"Running Fuzzy Clustering with k = {k}")
-        res_name = f"fuzzy_k{k}"
+            if dataset not in fuzziness_results:
+                fuzziness_results[dataset] = df_fuzziness
 
-        centers, membership_matrix = fuzzy_c_means(input_data, n_clusters=k, m=m)
+            x = df_fuzziness["m"]
+            y = df_fuzziness[metric]
 
-        # Make the clustering crisp by assigning each point to the cluster with the highest membership
-        labels = np.argmax(membership_matrix, axis=1)
+            ax = axs_fuzziness[row, col]
+            ax.scatter(x, y, label=f'{metric}', color='orange')
+            ax.set_title(f'{dataset}: {metric} for Fuzziness Degrees')
+            ax.set_xlabel('Degree of Fuzziness (m)')
+            ax.set_ylabel(metric_labels[metric])
+            ax.grid(True)
+        except Exception as e:
+            print(f"Error processing {dataset} for {metric}: {e}")
 
-        # External metrics evaluation
-        ari_score = adjusted_rand_score(true_labels, labels)
-        homogeneity, completeness, v_measure = homogeneity_completeness_v_measure(true_labels, labels)
+plt.tight_layout()
+plt.show()
 
-        # evaluation metrics
-        sli_scores = silhouette_score(input_data, labels)
-        db_score = davies_bouldin_score(input_data, labels)
+# Step 3: Elimination Process for Both `Cluster Number` and `m`
+def eliminate_best_parameters(cluster_data, fuzziness_data, metrics, metric_priority):
+    """
+    Eliminate to find the best overall parameters (cluster_number and m) for each dataset.
+    """
+    eliminated_params = {}
+    for dataset in cluster_data.keys():
+        remaining_clusters = cluster_data[dataset]['cluster_number'].unique().tolist()  # Cluster numbers
+        remaining_fuzziness = fuzziness_data[dataset]['m'].unique().tolist()  # Fuzziness values
 
-        results[res_name] = {
-            'k': k,
-            "silhouette": sli_scores,
-            "davies_bouldin": db_score,
-            "adjusted_rand_score": ari_score,
-            "homogeneity": homogeneity,
-            "completeness": completeness,
-            "v_measure": v_measure
+        print(f"\nStarting elimination for {dataset}...")
+        print(f"Initial Clusters: {remaining_clusters}")
+        print(f"Initial Fuzziness Values: {remaining_fuzziness}")
+
+        for metric in metric_priority:
+            # Check if metric exists in data
+            if metric not in cluster_data[dataset].columns or metric not in fuzziness_data[dataset].columns:
+                print(f"  Warning: Metric {metric_labels[metric]} is missing for {dataset}. Skipping...")
+                continue
+
+            # Eliminate for cluster number
+            cluster_scores = {
+                c: cluster_data[dataset][cluster_data[dataset]['cluster_number'] == c][metric].mean() for c in remaining_clusters
+            }
+            best_cluster = max(cluster_scores, key=cluster_scores.get)
+            remaining_clusters = [best_cluster]
+
+            # Eliminate for fuzziness
+            fuzziness_scores = {
+                m: fuzziness_data[dataset][fuzziness_data[dataset]['m'] == m][metric].mean() for m in remaining_fuzziness
+            }
+            best_fuzziness = max(fuzziness_scores, key=fuzziness_scores.get)
+            remaining_fuzziness = [best_fuzziness]
+
+            print(f"  After {metric_labels[metric]}: Remaining clusters = {remaining_clusters}, Fuzziness = {remaining_fuzziness}")
+
+        # Final parameters
+        eliminated_params[dataset] = {
+            "best_cluster_number": remaining_clusters[0],
+            "best_fuzziness": remaining_fuzziness[0],
         }
-        print(f"Completed: {res_name}, Silhouette: {sli_scores}, Davies-Bouldin: {db_score}, ARI: {ari_score}, Homogeneity: {homogeneity}, Completeness: {completeness}, V-Measure: {v_measure}")
-    
-    return results
+        print(f"Best parameters for {dataset}: {eliminated_params[dataset]}")
+    return eliminated_params
 
-if __name__ == "__main__":
-    data_dir = curr_dir / "datasets"
 
-    cache_dir = curr_dir / "cache"
-    cache_dir.mkdir(parents=True, exist_ok=True)
+# Perform elimination
+metric_priority = metrics
+eliminated_params = eliminate_best_parameters(cluster_results, fuzziness_results, metrics, metric_priority)
 
-    output_dir = curr_dir / "results"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    datasets = ["cmc", "sick", "mushroom"]
-    for dataset_name in datasets:
-        print(f"For dataset {dataset_name}")
-        input_data, true_labels = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
-
-        # clustering for different k
-        fuzzy_results = explore_k_fuzzy(input_data, true_labels)
-        pd.DataFrame(fuzzy_results).T.to_csv(output_dir / f"{dataset_name}_fuzzy_results.csv")
+# Print final results
+print("\nBest Parameters After Elimination Process:")
+for dataset, params in eliminated_params.items():
+    print(f"{dataset}: Best Cluster Number = {params['best_cluster_number']}, Best Fuzziness = {params['best_fuzziness']}")
