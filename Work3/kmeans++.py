@@ -68,7 +68,7 @@ def explore_k(input,labels, distance,csv_file_name, max_k=10):
 
     df = pd.DataFrame.from_dict(results, orient='index').reset_index()
     df.rename(columns={'index': 'k'}, inplace=True)
-    df.to_csv("results/"+csv_file_name+'_kmeans++.csv', index=False)
+    df.to_csv("results/"+csv_file_name+'_kmeans++_results.csv', index=False)
     return results
 if __name__ == "__main__":
 
