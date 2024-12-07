@@ -3,7 +3,7 @@ import sys
 import pathlib
 import pandas as pd
 import numpy as np
-from sklearn.metrics import silhouette_score, davies_bouldin_score
+from sklearn.metrics import silhouette_score, davies_bouldin_score, adjusted_rand_score, homogeneity_completeness_v_measure
 
 try:
     curr_dir = pathlib.Path(__file__).parent
@@ -17,7 +17,6 @@ def load_data(data_dir, dataset_name, cache, cache_dir):
     dataset = data_dir / f"{dataset_name}.arff"
     if not dataset.is_file():
         raise Exception(f"Dataset {dataset} could not be found.")
-
     print("Loading data")
     normalise_nominal = True if dataset_name != "cmc" else False
     return get_data(dataset, cache_dir=cache_dir, cache=cache, normalise_nominal=normalise_nominal)
@@ -40,7 +39,6 @@ def update_matrix(X, centers, m):
     return U_new
 
 def fuzzy_c_means(X, n_clusters=3, m=2.0, max_iter=150, error=1e-5):
- 
     # convert input to numpy array if it's a dataframe
     if isinstance(X, pd.DataFrame):
         X = X.to_numpy()
@@ -74,8 +72,12 @@ def explore_k_fuzzy(input_data, true_labels, max_k=10, m=2.0):
 
         centers, membership_matrix = fuzzy_c_means(input_data, n_clusters=k, m=m)
 
-        # crisp labels based on maximum membership
+        # Make the clustering crisp by assigning each point to the cluster with the highest membership
         labels = np.argmax(membership_matrix, axis=1)
+
+        # External metrics evaluation
+        ari_score = adjusted_rand_score(true_labels, labels)
+        homogeneity, completeness, v_measure = homogeneity_completeness_v_measure(true_labels, labels)
 
         # evaluation metrics
         sli_scores = silhouette_score(input_data, labels)
@@ -85,8 +87,12 @@ def explore_k_fuzzy(input_data, true_labels, max_k=10, m=2.0):
             'k': k,
             "silhouette": sli_scores,
             "davies_bouldin": db_score,
+            "adjusted_rand_score": ari_score,
+            "homogeneity": homogeneity,
+            "completeness": completeness,
+            "v_measure": v_measure
         }
-        print(f"Completed: {res_name}, Silhouette: {sli_scores}, Davies-Bouldin: {db_score}")
+        print(f"Completed: {res_name}, Silhouette: {sli_scores}, Davies-Bouldin: {db_score}, ARI: {ari_score}, Homogeneity: {homogeneity}, Completeness: {completeness}, V-Measure: {v_measure}")
     
     return results
 

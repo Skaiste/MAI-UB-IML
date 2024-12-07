@@ -4,7 +4,6 @@ import pathlib
 import numpy as np
 import pandas as pd
 from sklearn.cluster import SpectralClustering
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score, davies_bouldin_score, adjusted_rand_score, homogeneity_completeness_v_measure
 
 try:
@@ -25,42 +24,39 @@ def load_data(data_dir, dataset_name, cache, cache_dir):
     return get_data(dataset, cache_dir=cache_dir, cache=cache, normalise_nominal=normalise_nominal)
 
 
-def spectral_clustering_fit(X, n_clusters, affinity='nearest_neighbors', gamma=None, eigen_solver=None):
+def spectral_clustering_fit(X, n_clusters, affinity='nearest_neighbors', gamma=None, eigen_solver='lobpcg'):
     if affinity == 'rbf':
         clustering_model = SpectralClustering(
             n_clusters=n_clusters,
             affinity=affinity,
             random_state=42,
             eigen_solver=eigen_solver,
-            gamma=gamma
+            gamma=gamma,
+            n_jobs=-1
         )
     else:
         clustering_model = SpectralClustering(
             n_clusters=n_clusters,
             affinity=affinity,
             random_state=42,
-            n_neighbors=10
+            n_neighbors=10,
+            n_jobs=-1
         )
     cluster_labels = clustering_model.fit_predict(X)
     return cluster_labels
 
 
-def explore_k_spectral(input, true_labels, max_k=10, gamma_values=None, eigen_solvers=None):
-    """spectral clustering for different k values, affinities, and eigen solvers."""
+def explore_k_spectral(input, true_labels, max_k=10, gamma_values=None, eigen_solvers='lobpcg'):
     results = []
     affinities = ['nearest_neighbors', 'rbf']
     gamma_values = gamma_values or [0.1, 1, 10]
-    eigen_solvers = eigen_solvers or [None, 'lobpcg', 'arpack']  
+    eigen_solvers = eigen_solvers 
 
     # handle missing values
     if pd.isnull(input).any().any():
         print("Handling missing values...")
         input = pd.DataFrame(input).fillna(input.mean())
 
-    # scale data
-    print("Scaling data...")
-    scaler = StandardScaler()
-    input = scaler.fit_transform(input)
 
     for k in range(2, max_k):
         for affinity in affinities:
@@ -130,7 +126,7 @@ if __name__ == "__main__":
             true_labels,
             max_k=10,
             gamma_values=[0.1, 1, 10],
-            eigen_solvers=[None, 'arpack', 'lobpcg']
+            eigen_solvers=['lobpcg']
         )
 
         results_file = output_dir / f"{dataset_name}_spectral_results.csv"
