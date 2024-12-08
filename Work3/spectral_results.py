@@ -195,51 +195,43 @@ def eliminate_clusters(data, metrics, metric_priority):
     
     for dataset, cluster_data in data.items():
         remaining_clusters = cluster_data.index.tolist()
-        all_steps = {}  # To store the remaining clusters at each step for plotting
+        all_steps = {}  
 
         print(f"\nStarting elimination for {dataset}:")
         for metric in metric_priority:
             metric_values = cluster_data.loc[remaining_clusters, metric]
             best_value = metric_values.max()
             remaining_clusters = metric_values[metric_values == best_value].index.tolist()
-            all_steps[metric] = remaining_clusters.copy()  # Store for all steps
+            all_steps[metric] = remaining_clusters.copy()  
             
             print(f"  After {metric_labels[metric]}: Remaining clusters = {remaining_clusters}")
         
-        # If multiple clusters remain, choose the first one for simplicity
+        # if multiple clusters remain, choose the first one for simplicity
         best_cluster = remaining_clusters[0]
         eliminated_clusters[dataset] = {
             "best_cluster": best_cluster,
-            "elimination_steps": all_steps  # Save elimination steps for visualization
+            "elimination_steps": all_steps 
         }
         print(f"Best cluster for {dataset}: {best_cluster}")
     
     return eliminated_clusters
 
 
-# Perform cluster elimination
+# cluster elimination
 metric_priority = ["silhouette", "davies_bouldin", "adjusted_rand_score", "hcv_average"]
 elimination_results = eliminate_clusters(cluster_results, metrics, metric_priority)
 
-# Print final results
+# final results
 print("\nBest Clusters After Elimination Process:")
 for dataset, result in elimination_results.items():
     print(f"  {dataset}: Best Cluster Number = {result['best_cluster']}")
 
 
 def plot_elimination(data, elimination_results, metric_priority):
-    """
-    Plot elimination process for all datasets side-by-side.
-    
-    Args:
-        data: Dictionary of cluster performance metrics for each dataset.
-        elimination_results: Results from the elimination process, including steps.
-        metric_priority: Ordered list of metrics by priority.
-    """
-    # Number of datasets
+
     n_datasets = len(data)
 
-    # Create subplots, one for each dataset
+    # subplots, one for each dataset
     fig, axs = plt.subplots(1, n_datasets, figsize=(n_datasets * 6, 6), sharey=True)
 
     for i, (dataset_name, cluster_data) in enumerate(data.items()):
@@ -260,11 +252,10 @@ def plot_elimination(data, elimination_results, metric_priority):
             ax.set_ylabel("Remaining Clusters")
         ax.legend()
 
-    # Adjust layout and show plot
+    # ajjust layout and show plot
     plt.tight_layout()
     plt.show()
 
 
-# Generate the combined plot for all datasets
-print("\nGenerating combined stepwise elimination plot...")
+# combined plot for all datasets
 plot_elimination(cluster_results, elimination_results, metric_priority)
