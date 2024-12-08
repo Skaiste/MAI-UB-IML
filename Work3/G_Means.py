@@ -55,7 +55,7 @@ def gmeans_fit(data, k_min=1, k_max=20, max_k_iter=100, distance_fn=minkowski_di
     k = k_min
     clusters = initialise_clusters(data, k, distance_fn)
     while k < k_max:
-        print("Current k =", k)
+        # print("Current k =", k)
         k_old = k
         _clusters = []
 
@@ -66,7 +66,7 @@ def gmeans_fit(data, k_min=1, k_max=20, max_k_iter=100, distance_fn=minkowski_di
                 try:
                     new_clusters = future.result()
                 except Exception as exc:
-                    print(f'Cluster splitting generated an exception for cluster {c_idx}: {exc}')
+                    # print(f'Cluster splitting generated an exception for cluster {c_idx}: {exc}')
                     continue
 
                 # print(f"calculate centroids of the split clusters for cluster {c_idx}")
@@ -84,7 +84,7 @@ def gmeans_fit(data, k_min=1, k_max=20, max_k_iter=100, distance_fn=minkowski_di
                     # with the split clusters
                     _clusters += new_clusters
                     k += 1
-                    print(f"adding split cluster {c_idx} into clusters")
+                    # print(f"adding split cluster {c_idx} into clusters")
                 else:
                     _clusters.append(clusters[c_idx])
 
@@ -93,7 +93,7 @@ def gmeans_fit(data, k_min=1, k_max=20, max_k_iter=100, distance_fn=minkowski_di
             clusters = _clusters
             break
 
-        print("re-evaluating clusters based on the new centroids")
+        # print("re-evaluating clusters based on the new centroids")
         clusters = kmeans_fit(data, k, distance_fn, centroids=[get_cluster_centroid(c) for c in _clusters], max_iter=max_k_iter)
 
     return clusters

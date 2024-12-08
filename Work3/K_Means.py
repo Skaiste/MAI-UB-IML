@@ -2,6 +2,7 @@ import os
 import sys
 import random
 import pathlib
+import argparse
 import numpy as np
 import pandas as pd
 from sklearn.metrics import silhouette_score as sk_silhouette_score
@@ -119,21 +120,99 @@ def explore_k_and_seed(input, true_labels, seeds=(42,), max_k=10):
                 print(idx, seed, np.array(sli_scores).mean(), np.array(db_score).mean())
     return results
 
+# if __name__ == "__main__":
+#     data_dir = curr_dir / "datasets"
+#
+#     cache_dir = curr_dir / "cache"
+#     cache_dir.mkdir(parents=True, exist_ok=True)
+#
+#     output_dir = curr_dir / "results"
+#     output_dir.mkdir(parents=True, exist_ok=True)
+#
+#     seeds = list(range(20, 70, 5))
+#
+#     datasets = ["cmc", "sick", "mushroom"]
+#     for dataset_name in datasets:
+#         print("For dataset", dataset_name)
+#         input, true_labels = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
+#
+#         results = explore_k_and_seed(input, true_labels, seeds=seeds)
+#         pd.DataFrame(results).T.to_csv(output_dir / f"{dataset_name}_kmeans_results.csv")
+
+# %%
+
+defaults = {
+    "cmc": {"seed": 60, "k": 4, "distance": "L2"},
+    "sick": {"seed": 60, "k": 4, "distance": "L1"},
+    "mushroom": {"seed": 40, "k": 5, "distance": "cosine"},
+}
+
 if __name__ == "__main__":
-    data_dir = curr_dir / "datasets"
+    parser = argparse.ArgumentParser(description="K-Means clustering algorithm")
+    parser.add_argument(
+        '-i', '--input_path',
+        type=pathlib.Path,
+        default="datasets/sick.arff",
+        help='Path to the input data file'
+    )
 
-    cache_dir = curr_dir / "cache"
-    cache_dir.mkdir(parents=True, exist_ok=True)
+    parser.add_argument(
+        '-s', '--seed',
+        type=int,
+        choices=list(range(20, 70, 5)),
+        help='Random seed from the list of [20, 25, 30, ..., 65]'
+    )
 
-    output_dir = curr_dir / "results"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    parser.add_argument(
+        '-k',
+        type=int,
+        help='Number of clusters (k value)'
+    )
 
-    seeds = list(range(20, 70, 5))
+    parser.add_argument(
+        '-d', '--distance',
+        type=str,
+        choices=['L1', 'L2', 'cosine'],
+        help='Distance metric to use (Choose from L1, L2, or cosine)'
+    )
 
-    datasets = ["cmc", "sick", "mushroom"]
-    for dataset_name in datasets:
-        print("For dataset", dataset_name)
-        input, true_labels = load_data(data_dir, dataset_name, cache=False, cache_dir=cache_dir)
+    args = parser.parse_args()
 
-        results = explore_k_and_seed(input, true_labels, seeds=seeds)
-        pd.DataFrame(results).T.to_csv(output_dir / f"{dataset_name}_kmeans_results.csv")
+    if not args.input_path.exists():
+        raise FileNotFoundError(f"The input path {args.input_path} does not exist.")
+
+    dataset_name = "cmc" if "cmc" in args.input_path.name else ("sick" if "sick" in args.input_path.name else "mushroom")
+    args.seed = defaults[dataset_name]["seed"] if not args.seed else args.seed
+    args.k = defaults[dataset_name]["k"] if not args.k else args.k
+    args.distance = defaults[dataset_name]["distance"] if not args.distance else args.distance
+
+    distances = {
+        "L1": lambda x, y: minkowski_distance(x, y, r=1),
+        "L2": lambda x, y: minkowski_distance(x, y, r=2),
+        "cosine": cosine_distance,
+    }
+    distance_fn = distances[args.distance]
+
+    print(f"Running K-Means algorithm with seed = {args.seed}, k = {args.k}, and distance = {args.distance}:")
+
+    normalise_nominal = True if "cmc" not in args.input_path.name else False
+    input_data, true_labels = get_data(args.input_path, cache_dir=args.input_path.parent, cache=False, normalise_nominal=normalise_nominal)
+    input_clusters = kmeans_fit(input_data, args.k, distance_fn, max_iter=100)
+
+    labels = pd.DataFrame(columns=['cluster'])
+    for i, cl in enumerate(input_clusters):
+        l = pd.DataFrame({'cluster': [i] * cl.shape[0]}, index=cl.index)
+        labels = pd.concat([labels, l]).sort_index()
+
+    sli_scores = sk_silhouette_score(input_data, labels.squeeze())
+    db_score = davies_bouldin_score(input_data, labels.squeeze())
+    ari_score = adjusted_rand_score(true_labels.squeeze(), labels.squeeze())
+    hmv_score = homogeneity_completeness_v_measure(true_labels.squeeze(), labels.squeeze())
+    sse_score = np.array([sum_of_squared_error(cl) for cl in input_clusters]).mean()
+
+    # Print all calculated evaluation scores
+    print("Silhouette Score:", sli_scores)
+    print("Davies-Bouldin Score:", db_score)
+    print("Adjusted Rand Score:", ari_score)
+    print("Homogeneity, Completeness, and V-measure Score:", hmv_score)
+    print("Sum of Squared Error (SSE):", sse_score)
