@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 
 from loadarff import loadarff
 
@@ -22,11 +22,12 @@ class MinMaxNormalisation:
             
 #Edit by Tatevik
 class Normalization:
-    def __init__(self, nominal_values, normalise_nominal=True):
+    def __init__(self, nominal_values, normalise_nominal=True, one_hot_encoding=True):
         self.encoders = {}
         self.num_norm = MinMaxNormalisation()
         self.nom_vals = nominal_values
         self.normalise_nominal = normalise_nominal
+        self.one_hot_encoding = one_hot_encoding
 
     def normalise(self, df, train=True):
         for name, dt in df.dtypes.items():
@@ -35,7 +36,7 @@ class Normalization:
             else:
                 #Edit by Tatevik
                 if name.lower() != "class":
-                    if self.normalise_nominal:
+                    if self.normalise_nominal and self.one_hot_encoding:
                         column_reshaped = df[name].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x).values.reshape(-1, 1)
                         if train:
                             if name not in self.encoders:
@@ -49,6 +50,17 @@ class Normalization:
                         )
 
                         df = pd.concat([df.drop(name, axis=1), encoded], axis=1)
+                    elif self.normalise_nominal and not self.one_hot_encoding:
+                        column_reshaped = df[name].apply(
+                            lambda x: x.decode('utf-8') if isinstance(x, bytes) else x).values
+                        if train:
+                            if name not in self.encoders:
+                                self.encoders[name] = OrdinalEncoder(categories=[self.nom_vals[name]])
+                                # print(name, self.nom_vals[name], np.unique(column_reshaped))
+                                # print(column_reshaped)
+                                self.encoders[name].fit(column_reshaped.reshape(-1, 1))
+                        encoded = self.encoders[name].transform(column_reshaped.reshape(-1, 1)).flatten()
+                        df[name] = encoded
                     else:
                         df[name] = df[name].apply(lambda x: int(x.decode('utf-8')) if isinstance(x, bytes) else x)
                         df[name] = self.num_norm.normalise(name, df[name], train)
@@ -65,12 +77,11 @@ def replace_missing_data(df, numerical_means, common_nominals):
         if count > len(df.dtypes) * 0.25:
             df.drop(j, inplace=True)
 
-        for k in range(len(row)):
-            if not isinstance(row.iloc[k], bytes) and np.isnan(row.iloc[k]):
-                if df.dtypes.iloc[k].name == 'float64':
-                    df.iloc[j, k] = numerical_means[df.dtypes.keys()[k]]
-                else:
-                    df.iloc[j, k] = common_nominals[df.dtypes.keys()[k]]
+        for col in df.columns:
+            if not isinstance(row[col], bytes) and np.isnan(row[col]) and df.dtypes[col].name == 'float64':
+                df.loc[j, col] = numerical_means[col]
+            elif isinstance(row[col], bytes) and row[col] == b'?':
+                df.loc[j, col] = common_nominals[col]
 
 
 def get_data(data_fn, cache=True, cache_dir=None, normalise_nominal=True):
@@ -102,10 +113,14 @@ def get_data(data_fn, cache=True, cache_dir=None, normalise_nominal=True):
 
         replace_missing_data(df, numerical_means, common_nominals)
 
+        orig_df = df.copy()
+
         #Edit by  Tatevik
         nominal_values = {attr:list(data[1][attr][1]) for attr in data[1].names() if data[1][attr][0] == 'nominal'}
         general_normalizer = Normalization(nominal_values, normalise_nominal=normalise_nominal)
         df = general_normalizer.normalise(df)
+
+        plot_df = Normalization(nominal_values, one_hot_encoding=False).normalise(orig_df)
 
         # cache normalised data
         if cache and cache_dir is not None:
@@ -128,4 +143,4 @@ def get_data(data_fn, cache=True, cache_dir=None, normalise_nominal=True):
     df[output_column] = df[output_column].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x)
     output = df[output_column]
 
-    return input, output
+    return input, output, plot_df[[col for col in plot_df.columns if col != output_column]]

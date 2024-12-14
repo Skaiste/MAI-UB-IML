@@ -156,8 +156,8 @@ class NominalAttribute(Attribute):
         if data_str in self.values:
             return data_str
         elif data_str == '?':
-            # return data_str
-            return np.nan
+            return data_str
+            # return np.nan
         else:
             ### EDIT (by Skaiste): returning the value even if it is not in the value set
             ###                    but is a substring of one of the values (this is done because
@@ -895,8 +895,8 @@ def _loadarff(ofile):
                         break
                 for i in range(cutoff, len(elems)):
                     if attr[i].type_name == "nominal":
-                        # parsed_data.append("?")
-                        parsed_data.append(np.nan)
+                        parsed_data.append("?")
+                        # parsed_data.append(np.nan)
                     else:
                         parsed_data.append(np.nan)
                 yield tuple(parsed_data)
@@ -910,8 +910,8 @@ def _loadarff(ofile):
                             cutoff += 1
                         except ValueError as err:
                             if attr[i].type_name == "nominal":
-                                # new_entry.append("?")
-                                new_entry.append(np.nan)
+                                new_entry.append("?")
+                                # new_entry.append(np.nan)
                             else:
                                 new_entry.append(np.nan)
                     if set(new_entry).issubset({"?", np.nan}):
@@ -928,8 +928,8 @@ def _loadarff(ofile):
                         ridx += 1
                     except (ValueError, IndexError) as err:
                         if attr[i].type_name == "nominal":
-                            # parsed_data.append("?")
-                            parsed_data.append(np.nan)
+                            parsed_data.append("?")
+                            # parsed_data.append(np.nan)
                         else:
                             parsed_data.append(np.nan)
                 yield tuple(parsed_data)

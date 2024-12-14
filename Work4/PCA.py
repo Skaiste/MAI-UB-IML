@@ -5,9 +5,11 @@ import pathlib
 import argparse
 import matplotlib.pyplot as plt
 from pprint import pprint
+import seaborn as sns
 
 import numpy as np
 import pandas as pd
+from matplotlib import lines
 from sklearn.decomposition import PCA, IncrementalPCA
 from sklearn.metrics import silhouette_score, davies_bouldin_score, adjusted_rand_score, homogeneity_completeness_v_measure
 import umap
@@ -25,7 +27,7 @@ from optics import fit_optics
 
 
 # %%
-def pca_fit(X, n_components=None, print_info=True):
+def pca_fit(X, n_components=None, print_info=False):
     # Standardisation
     # Removing invalid data to allow eigenvector extraction
     X = X.fillna(X.mean())
@@ -34,6 +36,13 @@ def pca_fit(X, n_components=None, print_info=True):
 
     # covariance matrix
     covar = z_score.cov()
+
+    # Print covariance matrix in a readable format
+    if print_info:
+        print("Covariance Matrix:")
+        # Round to 3 digits and ensure the full matrix is printed
+        with np.printoptions(threshold=np.inf, linewidth=np.inf, precision=3, suppress=True):
+            print(covar.round(3).to_numpy())
 
     if np.isnan(covar).any().any():
         raise Exception("NaN values found in covar")
@@ -45,8 +54,9 @@ def pca_fit(X, n_components=None, print_info=True):
     eigen_vecs = eigen_vecs.real
     eigen_vals = eigen_vals.real
     if print_info:
-        print("Eigenvalues: ", eigen_vals)
-        print("Eigenvectors: \n", eigen_vecs)
+        print("Eigenvalues: ", eigen_vals, "\nEigenvectors:")
+        with np.printoptions(threshold=np.inf, linewidth=np.inf, precision=3, suppress=True):
+            print(eigen_vecs)
 
     # Sort eigenvalues and eigenvectors in descending order
     sorted_indices = np.argsort(eigen_vals)[::-1]
@@ -66,15 +76,16 @@ def plot_features(X, y, title, columns=None, result_dir=None, show=True):
     if not isinstance(X, pd.DataFrame):
         X = pd.DataFrame(X)
 
-    if columns is not None:
+    if columns is None:
         columns = X.columns[:2]
 
     plt.figure(figsize=(10, 10))
 
-    classes = labels.unique()
-    for cl in classes:
+    classes = y.unique()
+    palette = sns.color_palette("Set2", len(classes))
+    for idx, cl in enumerate(classes):
         cl_idx = y[y == cl].index
-        plt.scatter(X[columns[0]].loc[cl_idx], X[columns[1]].loc[cl_idx], label=f"Class {cl}")
+        sns.scatterplot(data=X[columns].loc[cl_idx], x=columns[0], y=columns[1], alpha=0.75, label=str(cl), color=palette[idx], s=200)
     plt.xlabel(columns[0])
     plt.ylabel(columns[1])
     plt.title(title)
@@ -87,9 +98,34 @@ def plot_features(X, y, title, columns=None, result_dir=None, show=True):
         filename = title.lower().replace(" ", "_") + ".png"
         plt.savefig(result_dir / filename)
 
+    plt.close()
+
+    plt.figure(figsize=(10, 10))
+    for idx, cl in enumerate(classes):
+        cl_idx = y[y == cl].index
+        sns.kdeplot(data=X[columns].loc[cl_idx], x=columns[0], y=columns[1], fill=True, alpha=0.5, label=str(cl), color=palette[idx])
+    plt.xlabel(columns[0])
+    plt.ylabel(columns[1])
+    plt.title(title)
+
+    handles = [lines.Line2D([0], [0], color=color) for color in palette[:len(classes)]]
+    plt.legend(handles=handles, labels=[str(cl) for cl in classes])
+    if show:
+        plt.show()
+    else:
+        if result_dir is None:
+            result_dir = curr_dir / "results"
+        filename = title.lower().replace(" ", "_") + "_sns.png"
+        plt.savefig(result_dir / filename)
+
+    plt.close()
+
 def plot_eigenvectors(eigenvecs, title, result_dir=None, show=True):
     plt.figure(figsize=(10, 10))
-    plt.scatter(eigenvecs[:, 0], eigenvecs[:, 1])
+    eigenvecs = pd.DataFrame(eigenvecs)
+    palette = sns.color_palette("Set2", 1)
+    sns.scatterplot(data=eigenvecs, x=0, y=1, alpha=0.75, color=palette[0], s=200)
+    # plt.scatter(eigenvecs[:, 0], eigenvecs[:, 1])
     plt.xlabel("First Eigenvector")
     plt.ylabel("Second Eigenvector")
     plt.title(title)
@@ -101,10 +137,17 @@ def plot_eigenvectors(eigenvecs, title, result_dir=None, show=True):
         filename = title.lower().replace(" ", "_") + ".png"
         plt.savefig(result_dir / filename)
 
-def plot_clusters(clusters, title, result_dir=None, show=True):
+    plt.close()
+
+def plot_clusters(clusters, title, columns=None, result_dir=None, show=True):
     plt.figure(figsize=(10, 10))
-    for cluster in clusters:
-        plt.scatter(cluster[0], cluster[1])
+    palette = sns.color_palette("Set2", len(clusters))
+    for idx, cluster in enumerate(clusters):
+        if len(cluster) == 0:
+            continue
+        if columns is None:
+            columns = cluster.columns[:2]
+        sns.scatterplot(data=cluster[columns], x=columns[0], y=columns[1], alpha=0.75, color=palette[idx], s=200)
     plt.title(title)
     if show:
         plt.show()
@@ -114,6 +157,44 @@ def plot_clusters(clusters, title, result_dir=None, show=True):
         filename = title.lower().replace(" ", "_") + ".png"
         plt.savefig(result_dir / filename)
 
+    plt.close()
+
+
+# %%
+
+def kmeanspp_with_labels(data, k, distance):
+    result = kmeans_plus_plus_fit(data, k, distance)
+    labels = pd.DataFrame(columns=['cluster'])
+    for i, cl in enumerate(result):
+        l = pd.DataFrame({'cluster': [i] * cl.shape[0]}, index=cl.index)
+        labels = pd.concat([labels, l]).sort_index()
+    return result, labels
+
+def optics_with_labels(data, min_samples, distance, algorithm, eps):
+    result = fit_optics(data, min_samples, distance, algorithm, eps)
+    cluster_labels = result.labels_
+    labels = cluster_labels[cluster_labels != -1]
+    return result, labels, cluster_labels
+
+def optics_to_clusters(data, labels, cluster_labels):
+    if not isinstance(data, pd.DataFrame):
+        data = pd.DataFrame(data)
+    clusters = [pd.DataFrame([data.loc[l_idx]
+                              for l_idx, l in enumerate(cluster_labels)
+                              if l == label and l_idx in list(data.index)])
+                for label in np.unique(labels)]
+    return clusters
+
+def df_to_clusters(data, labels):
+    if not isinstance(data, pd.DataFrame):
+        data = pd.DataFrame(data)
+    if not isinstance(labels, pd.Series):
+        labels = pd.Series(labels)
+    cluster = [pd.DataFrame([data.loc[l_idx]
+                             for l_idx in labels.index
+                             if labels.loc[l_idx] == label and l_idx in list(data.index)])
+               for label in np.unique(labels)]
+    return cluster
 
 # %%
 
@@ -160,16 +241,16 @@ def parse_arguments():
 
 # %%
 if __name__ == "__main__":
-    args = parse_arguments()
-    # args = lambda : None
-    # args.dataset_path = list((curr_dir / "datasets").glob("*.arff"))
-    # args.n_components = 4
-    # args.show_plots = True
+    # args = parse_arguments()
+    args = lambda : None
+    args.dataset_path = list((curr_dir / "datasets").glob("*.arff"))
+    args.n_components = 6
+    args.show_plots = True
 
     columns_to_plot = {
-        "cmc": ['wage', 'weducation'],
-        "sick": ['age', 'TSH'],
-        "mushroom": ['cap-shape_b', 'cap-shape_c']
+        "cmc": ['children', 'wage'],
+        "sick": ['T4U', 'FTI'],
+        "mushroom": ['spore-print-color', 'gill-color']
     }
     k_values = {"cmc": 6, "sick": 8, "mushroom": 3}
     distance = {
@@ -202,22 +283,25 @@ if __name__ == "__main__":
         plot_result_dir.mkdir(parents=True, exist_ok=True)
         print("For dataset", dataset_name)
         normalise_nominal = True if dataset_name != "cmc" else False
-        input, labels = get_data(fn, cache_dir=None, cache=False, normalise_nominal=normalise_nominal)
+        input, labels, plot_input = get_data(fn, cache_dir=None, cache=False, normalise_nominal=normalise_nominal)
 
-        plot_features(input, labels,
+        plot_features(plot_input, labels,
                       title=f'Initial Input of {dataset_name} dataset',
                       columns=columns_to_plot[dataset_name],
                       show=args.show_plots,
                       result_dir=plot_result_dir)
+
+
+
         print("Running PCA on input data...")
-        results, eigenvectors = pca_fit(input, n_components=args.n_components)
+        results, eigenvectors = pca_fit(input, n_components=args.n_components, print_info=True)
         plot_eigenvectors(eigenvectors,
                           title=f'Eigenvectors of {dataset_name} dataset',
                           show=args.show_plots,
                           result_dir=plot_result_dir)
         plot_features(results, labels,
                       title=f'PCA of {dataset_name} dataset',
-                      columns=columns_to_plot[dataset_name],
+                      columns=results.columns[:2],
                       show=args.show_plots,
                       result_dir=plot_result_dir)
 
@@ -228,28 +312,21 @@ if __name__ == "__main__":
         inc_pca_results = inc_pca.fit_transform(input)
         plot_features(pca_results, labels,
                       title=f'Sklearn PCA of {dataset_name} dataset',
-                      columns=columns_to_plot[dataset_name],
+                      columns=[0, 1],
                       show=args.show_plots,
                       result_dir=plot_result_dir)
         plot_features(inc_pca_results, labels,
                       title=f'Sklearn Incremental PCA of {dataset_name} dataset',
-                      columns=columns_to_plot[dataset_name],
+                      columns=[0, 1],
                       show=args.show_plots,
                       result_dir=plot_result_dir)
 
         # cluster with kmeans++
+        print("Running K-Means++ clustering on original data...")
+        orig_kmeanspp_result, orig_kmeanspp_labels = kmeanspp_with_labels(input, k_values[dataset_name], distance[dataset_name])
         print("Running K-Means++ clustering on PCA results...")
-        kmeanspp_result = kmeans_plus_plus_fit(results, k_values[dataset_name], distance[dataset_name])
-        plot_clusters(kmeanspp_result,
-                      title=f'Kmeans++ Clustering of {dataset_name} dataset',
-                      show=args.show_plots,
-                      result_dir=plot_result_dir)
-
+        kmeanspp_result, kmeanspp_labels = kmeanspp_with_labels(results, k_values[dataset_name], distance[dataset_name])
         print("K-Means++ metric scores: ")
-        kmeanspp_labels = pd.DataFrame(columns=['cluster'])
-        for i, cl in enumerate(kmeanspp_result):
-            l = pd.DataFrame({'cluster': [i] * cl.shape[0]}, index=cl.index)
-            kmeanspp_labels = pd.concat([kmeanspp_labels, l]).sort_index()
         pprint({
             "silhouette": silhouette_score(results, kmeanspp_labels.squeeze()),
             "davies_bouldin": davies_bouldin_score(results, kmeanspp_labels.squeeze()),
@@ -260,19 +337,16 @@ if __name__ == "__main__":
         pprint(previous_results[dataset_name]["kmeans++"])
 
         # cluster with OPTICS
-        print("Running OPTICS clustering on PCA results...")
+        print("Running OPTICS clustering on original data...")
         params = optics_params[dataset_name]
-        optics_result = fit_optics(results, params['min_samples'], params['distance'], params['algorithm'], params['eps'])
-        optics_cluster_labels = optics_result.labels_
-        optics_labels = optics_cluster_labels[optics_cluster_labels != -1]
-        optics_clusters = [pd.DataFrame([results.loc[l_idx]
-                                         for l_idx, l in enumerate(optics_cluster_labels)
-                                         if l == label])
-                           for label in np.unique(optics_labels)]
-        plot_clusters(optics_clusters,
-                      title=f'OPTICS Clustering of {dataset_name} dataset',
-                      show=args.show_plots,
-                      result_dir=plot_result_dir)
+        orig_optics = optics_with_labels(input, params['min_samples'], params['distance'], params['algorithm'], params['eps'])
+        orig_optics_result, orig_optics_labels, orig_optics_cluster_labels = orig_optics
+
+        print("Running OPTICS clustering on PCA results...")
+        _optics = optics_with_labels(results, params['min_samples'], params['distance'], params['algorithm'], params['eps'])
+        optics_result, optics_labels, optics_cluster_labels = _optics
+        optics_clusters = optics_to_clusters(results, optics_labels, optics_cluster_labels)
+
         print("OPTICS metric scores: ")
         input_ = results[optics_cluster_labels != -1]
         labels_ = labels[optics_cluster_labels != -1].to_numpy()
@@ -283,45 +357,65 @@ if __name__ == "__main__":
             "v_measure": homogeneity_completeness_v_measure(labels_.squeeze(), optics_labels.squeeze())[2],
         })
         print("OPTICS metric scores before PCA:")
-        pprint(previous_results[dataset_name]["optics"])
 
         # Visualising everything in a 2-dimensional space
-        orig_visualisation = pca_fit(input, n_components=2)
-        orig_visualisation_clustered = [pd.DataFrame([input.loc[l_idx]
-                                                      for l_idx in labels.index
-                                                      if labels.loc[l_idx] == label])
-                                        for label in labels.unique()]
+        orig_visualisation_PCA = pca_fit(input, n_components=2)[0]
+        orig_visualisation_clustered_PCA = df_to_clusters(orig_visualisation_PCA, labels)
         print("Running PCA for visualisation of original dataset...")
-        orig_visualisation_clustered_PCA = [pca_fit(cl, n_components=2)[0] for cl in orig_visualisation_clustered]
         plot_clusters(orig_visualisation_clustered_PCA,
                       title=f'2-D Visualisation of original labeled clusters using PCA of {dataset_name} dataset',
                       show=args.show_plots,
                       result_dir=plot_result_dir)
+
         print("Running PCA for visualisation of K-Means++ output...")
-        kmeanspp_visualisation_PCA = [pca_fit(cl, n_components=2)[0] for cl in kmeanspp_result]
-        plot_clusters(kmeanspp_visualisation_PCA,
+        orig_kmeanspp_visualisation_PCA = df_to_clusters(orig_visualisation_PCA, orig_kmeanspp_labels["cluster"])
+        plot_clusters(orig_kmeanspp_visualisation_PCA,
                       title=f'K-Means 2-D Visualisation using PCA of {dataset_name} dataset',
                       show=args.show_plots,
                       result_dir=plot_result_dir)
-        print("Running PCA for visualisation of OPTICS output...")
-        optics_visualisation_PCA = [pca_fit(cl, n_components=2)[0] for cl in optics_clusters]
-        plot_clusters(optics_visualisation_PCA,
-                      title=f'OPTICS 2-D Visualisation using PCA of {dataset_name} dataset',
+        print("Running PCA for visualisation of reduced K-Means++ output...")
+        kmeanspp_visualisation_PCA = df_to_clusters(orig_visualisation_PCA, kmeanspp_labels["cluster"])
+        plot_clusters(kmeanspp_visualisation_PCA,
+                      title=f'Reduced K-Means 2-D Visualisation using PCA of {dataset_name} dataset',
                       show=args.show_plots,
                       result_dir=plot_result_dir)
 
-        orig_visualisation_clustered_UMAP = [umap.UMAP().fit_transform(cl).T for cl in orig_visualisation_clustered]
+        print("Running PCA for visualisation of OPTICS output...")
+        orig_optics_visualisation_PCA = df_to_clusters(orig_visualisation_PCA, orig_optics_labels)
+        plot_clusters(orig_optics_visualisation_PCA,
+                      title=f'OPTICS 2-D Visualisation using PCA of {dataset_name} dataset',
+                      show=args.show_plots,
+                      result_dir=plot_result_dir)
+        print("Running PCA for visualisation of reduced OPTICS output...")
+        optics_visualisation_PCA = df_to_clusters(orig_visualisation_PCA, optics_labels)
+        plot_clusters(optics_visualisation_PCA,
+                      title=f'Reduced OPTICS 2-D Visualisation using PCA of {dataset_name} dataset',
+                      show=args.show_plots,
+                      result_dir=plot_result_dir)
+
+        orig_visualisation_UMAP = umap.UMAP().fit_transform(input)
+        orig_visualisation_clustered_UMAP = df_to_clusters(orig_visualisation_UMAP, labels)
         plot_clusters(orig_visualisation_clustered_UMAP,
                       title=f'2-D Visualisation of original labeled clusters using UMAP of {dataset_name} dataset',
                       show=args.show_plots,
                       result_dir=plot_result_dir)
-        kmeanspp_visualisation_UMAP = [umap.UMAP().fit_transform(cl).T for cl in kmeanspp_result]
-        plot_clusters(kmeanspp_visualisation_UMAP,
+        orig_kmeanspp_visualisation_UMAP = df_to_clusters(orig_visualisation_UMAP, orig_kmeanspp_labels["cluster"])
+        plot_clusters(orig_kmeanspp_visualisation_UMAP,
                       title=f'K-Means 2-D Visualisation using UMAP of {dataset_name} dataset',
                       show=args.show_plots,
                       result_dir=plot_result_dir)
-        optics_visualisation_UMAP = [umap.UMAP().fit_transform(cl).T for cl in optics_clusters]
-        plot_clusters(optics_visualisation_UMAP,
+        kmeanspp_visualisation_UMAP = df_to_clusters(orig_visualisation_UMAP, kmeanspp_labels["cluster"])
+        plot_clusters(kmeanspp_visualisation_UMAP,
+                      title=f'Reduced K-Means 2-D Visualisation using UMAP of {dataset_name} dataset',
+                      show=args.show_plots,
+                      result_dir=plot_result_dir)
+        orig_optics_visualisation_UMAP = df_to_clusters(orig_visualisation_UMAP, orig_optics_labels)
+        plot_clusters(orig_optics_visualisation_UMAP,
                       title=f'OPTICS 2-D Visualisation using UMAP of {dataset_name} dataset',
+                      show=args.show_plots,
+                      result_dir=plot_result_dir)
+        optics_visualisation_UMAP = df_to_clusters(orig_visualisation_UMAP, optics_labels)
+        plot_clusters(optics_visualisation_UMAP,
+                      title=f'Reduced OPTICS 2-D Visualisation using UMAP of {dataset_name} dataset',
                       show=args.show_plots,
                       result_dir=plot_result_dir)
