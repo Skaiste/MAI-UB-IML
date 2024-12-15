@@ -241,11 +241,11 @@ def parse_arguments():
 
 # %%
 if __name__ == "__main__":
-    # args = parse_arguments()
-    args = lambda : None
-    args.dataset_path = list((curr_dir / "datasets").glob("*.arff"))
-    args.n_components = 6
-    args.show_plots = True
+    args = parse_arguments()
+    # args = lambda : None
+    # args.dataset_path = list((curr_dir / "datasets").glob("*.arff"))
+    # args.n_components = 6
+    # args.show_plots = True
 
     columns_to_plot = {
         "cmc": ['children', 'wage'],
