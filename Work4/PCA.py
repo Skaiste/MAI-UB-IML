@@ -334,7 +334,13 @@ if __name__ == "__main__":
             "v_measure": homogeneity_completeness_v_measure(labels.squeeze(), kmeanspp_labels.squeeze())[2],
         })
         print("K-Means++ metric scores before PCA:")
-        pprint(previous_results[dataset_name]["kmeans++"])
+        pprint({
+            "silhouette": silhouette_score(results, orig_kmeanspp_labels.squeeze()),
+            "davies_bouldin": davies_bouldin_score(results, orig_kmeanspp_labels.squeeze()),
+            "adjusted_rand_score": adjusted_rand_score(labels.squeeze(), orig_kmeanspp_labels.squeeze()),
+            "v_measure": homogeneity_completeness_v_measure(labels.squeeze(), orig_kmeanspp_labels.squeeze())[2],
+        })
+        # pprint(previous_results[dataset_name]["kmeans++"])
 
         # cluster with OPTICS
         print("Running OPTICS clustering on original data...")
@@ -357,6 +363,14 @@ if __name__ == "__main__":
             "v_measure": homogeneity_completeness_v_measure(labels_.squeeze(), optics_labels.squeeze())[2],
         })
         print("OPTICS metric scores before PCA:")
+        input_ = results[orig_optics_cluster_labels != -1]
+        labels_ = labels[orig_optics_cluster_labels != -1].to_numpy()
+        pprint({
+            "silhouette": silhouette_score(input_, orig_optics_labels.squeeze()),
+            "davies_bouldin": davies_bouldin_score(input_, orig_optics_labels.squeeze()),
+            "adjusted_rand_score": adjusted_rand_score(labels_.squeeze(), orig_optics_labels.squeeze()),
+            "v_measure": homogeneity_completeness_v_measure(labels_.squeeze(), orig_optics_labels.squeeze())[2],
+        })
 
         # Visualising everything in a 2-dimensional space
         orig_visualisation_PCA = pca_fit(input, n_components=2)[0]
